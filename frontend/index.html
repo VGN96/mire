@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Miré — AI Style Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --noir:#0e0d0c;--cream:#f5f0e8;--cream2:#faf7f2;--blush:#e8c4b0;
+  --rose:#c47a5a;--rose-d:#a05a3a;--sage:#7a9e8a;--gold:#c9a84c;
+  --gold-l:#e8d48a;--muted:#8a7e72;--bdr:rgba(100,80,60,0.12);--card:#faf7f2;
+}
+html,body{height:100%;background:#1a1410;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif}
+.phone{width:390px;height:844px;background:var(--cream);border-radius:48px;overflow:hidden;position:relative;box-shadow:0 40px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.1);display:flex;flex-direction:column}
+.phone::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:#0e0d0c;border-radius:0 0 18px 18px;z-index:100}
+.screen{display:none;flex-direction:column;height:100%;overflow:hidden}
+.screen.active{display:flex}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{width:0}
+/* TOP BAR */
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:36px 20px 12px;flex-shrink:0;background:var(--cream);border-bottom:0.5px solid var(--bdr)}
+.wordmark{font-family:'Playfair Display',serif;font-size:22px;letter-spacing:-.5px}
+.wordmark em{color:var(--gold);font-style:italic}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:0.5px solid var(--bdr);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--noir);flex-shrink:0;position:relative}
+.back-btn{background:none;border:none;font-size:22px;color:var(--noir);cursor:pointer;padding:4px;display:flex;align-items:center}
+.top-bar-title{font-family:'Playfair Display',serif;font-size:19px}
+.top-bar-title em{color:var(--gold);font-style:italic}
+/* BOTTOM NAV */
+.bottom-nav{display:flex;border-top:0.5px solid var(--bdr);background:var(--cream);flex-shrink:0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;cursor:pointer;font-size:9px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;border:none;background:transparent;transition:color .2s}
+.nav-item i{font-size:20px}
+.nav-item.on{color:var(--rose)}
+/* AUTH FORMS */
+.form-wrap{flex:1;overflow-y:auto;padding:20px 28px 40px}
+.form-wrap::-webkit-scrollbar{width:0}
+.form-title{font-family:'Playfair Display',serif;font-size:28px;color:var(--cream);line-height:1.2;margin-bottom:6px}
+.form-title em{color:var(--gold);font-style:italic}
+.form-sub{font-size:13px;color:rgba(245,240,232,.45);margin-bottom:28px}
+.field{margin-bottom:14px}
+.field label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:rgba(245,240,232,.5);display:block;margin-bottom:6px}
+.field input{width:100%;background:rgba(255,255,255,.06);border:0.5px solid rgba(255,255,255,.12);border-radius:10px;padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--cream);outline:none;transition:border-color .2s}
+.field input:focus{border-color:rgba(201,168,76,.5)}
+.field input::placeholder{color:rgba(245,240,232,.25)}
+.btn-gold{width:100%;padding:16px;background:var(--gold);color:var(--noir);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;letter-spacing:1px;cursor:pointer;transition:all .2s;margin-top:6px}
+.btn-gold:disabled{opacity:.5;cursor:not-allowed}
+.form-switch{text-align:center;font-size:13px;color:rgba(245,240,232,.4);margin-top:16px}
+.form-switch span{color:var(--gold);cursor:pointer}
+.form-err{background:rgba(196,122,90,.15);border:0.5px solid rgba(196,122,90,.3);border-radius:8px;padding:10px 14px;font-size:12px;color:#f0b090;margin-bottom:12px;display:none}
+.form-err.show{display:block}
+/* SPLASH */
+#splash{background:var(--noir)}
+#splash::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(201,168,76,.15),transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(196,122,90,.1),transparent 50%);pointer-events:none}
+.splash-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding-top:40px;position:relative;z-index:1}
+.splash-orb{width:160px;height:160px;border-radius:50%;background:linear-gradient(135deg,rgba(201,168,76,.2),rgba(196,122,90,.1));border:1px solid rgba(201,168,76,.25);display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:16px;animation:float 4s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.splash-wm{font-family:'Playfair Display',serif;font-size:52px;color:var(--cream);letter-spacing:-1px}
+.splash-wm em{color:var(--gold);font-style:italic}
+.splash-tag{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(245,240,232,.3);margin-top:4px}
+.splash-cta{padding:0 32px 52px;display:flex;flex-direction:column;gap:10px;position:relative;z-index:1}
+.btn-ghost{padding:13px;background:transparent;border:1px solid rgba(245,240,232,.15);color:rgba(245,240,232,.6);border-radius:10px;font-size:13px;cursor:pointer;letter-spacing:1px;font-family:'DM Sans',sans-serif}
+/* ONBOARDING */
+.ob-step{display:none}.ob-step.active{display:block}
+.ob-header{padding:52px 28px 24px;text-align:center}
+.ob-num{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.ob-q{font-family:'Playfair Display',serif;font-size:26px;line-height:1.2;color:var(--noir)}
+.ob-q em{color:var(--rose);font-style:italic}
+.ob-opts{padding:0 24px;display:flex;flex-wrap:wrap;gap:10px}
+.ob-chip{padding:10px 18px;border:1px solid var(--bdr);border-radius:24px;font-size:13px;cursor:pointer;color:var(--noir);background:var(--card);transition:all .2s;user-select:none}
+.ob-chip.sel{background:var(--noir);color:var(--cream);border-color:transparent}
+.ob-footer{padding:24px 28px 0;display:flex;justify-content:space-between;align-items:center}
+.ob-dots{display:flex;gap:6px}
+.ob-dot{width:6px;height:6px;border-radius:50%;background:var(--bdr)}
+.ob-dot.on{background:var(--rose);width:18px;border-radius:3px}
+.ob-next{padding:12px 28px;background:var(--noir);color:var(--cream);border:none;border-radius:8px;font-size:13px;cursor:pointer;letter-spacing:1px;font-family:'DM Sans',sans-serif}
+/* LAYOUT HELPERS */
+.sec-title{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);padding:16px 20px 8px}
+.hscroll{display:flex;gap:10px;padding:0 20px;overflow-x:auto}
+.hscroll::-webkit-scrollbar{height:0}
+/* HOME */
+.greeting{padding:18px 20px 10px}
+.greeting p{font-size:12px;color:var(--muted)}
+.greeting h2{font-family:'Playfair Display',serif;font-size:26px;line-height:1.15}
+.weather-card{margin:0 20px;background:var(--sage);border-radius:16px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+.w-temp{font-family:'Playfair Display',serif;font-size:30px;color:#fff}
+.w-city{font-size:11px;color:rgba(255,255,255,.65)}
+.w-tip{font-size:11px;color:rgba(255,255,255,.75);margin-top:2px}
+.w-icon{font-size:48px}
+.ootd-card{margin:0 20px;background:var(--noir);border-radius:18px;padding:20px;position:relative;overflow:hidden}
+.ootd-card::after{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(rgba(201,168,76,.12),transparent 70%)}
+.ootd-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:2px;text-transform:uppercase;background:rgba(201,168,76,.15);color:var(--gold);padding:4px 10px;border-radius:3px;margin-bottom:10px;border:0.5px solid rgba(201,168,76,.25)}
+.ootd-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--cream)}
+.ootd-sub{font-size:12px;color:rgba(245,240,232,.45);margin-top:3px}
+.ootd-pieces{display:flex;gap:8px;margin-top:16px}
+.ootd-piece{flex:1;background:rgba(255,255,255,.05);border-radius:12px;padding:12px 6px;text-align:center;font-size:26px;border:0.5px solid rgba(255,255,255,.06)}
+.ootd-piece-lbl{font-size:9px;color:rgba(245,240,232,.35);margin-top:4px}
+.ootd-actions{display:flex;gap:8px;margin-top:14px}
+.ootd-btn{flex:1;padding:9px;border-radius:8px;font-size:11px;cursor:pointer;border:0.5px solid rgba(255,255,255,.15);background:transparent;color:rgba(245,240,232,.7);font-family:'DM Sans',sans-serif;transition:all .2s}
+.ootd-btn.gold{background:var(--gold);color:var(--noir);border-color:transparent;font-weight:500}
+.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 20px}
+.quick-tile{background:var(--card);border:0.5px solid var(--bdr);border-radius:14px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all .2s}
+.quick-tile:hover{background:var(--blush);transform:translateY(-2px)}
+.quick-tile i{font-size:22px;color:var(--rose)}
+.quick-tile span{font-size:10px;color:var(--muted);text-align:center;line-height:1.2}
+.insight-chip{flex-shrink:0;background:var(--card);border:0.5px solid var(--bdr);border-radius:20px;padding:8px 14px;display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap}
+.insight-chip i{font-size:14px;color:var(--sage)}
+.mwi{flex-shrink:0;width:86px;background:var(--card);border:0.5px solid var(--bdr);border-radius:14px;padding:10px 8px;text-align:center;cursor:pointer}
+.mwi-em{font-size:28px}.mwi-name{font-size:10px;color:var(--noir);margin-top:4px;font-weight:500}.mwi-worn{font-size:9px;color:var(--muted);margin-top:2px}
+.notif-dot{width:7px;height:7px;border-radius:50%;background:var(--rose);position:absolute;top:0;right:0;display:none}
+/* CHAT */
+.quick-prompts{display:flex;gap:8px;padding:10px 20px;overflow-x:auto;flex-shrink:0}
+.quick-prompts::-webkit-scrollbar{height:0}
+.qp{flex-shrink:0;background:var(--card);border:0.5px solid var(--bdr);border-radius:20px;padding:7px 13px;font-size:11px;cursor:pointer;white-space:nowrap;color:var(--muted);transition:all .2s}
+.qp:hover{border-color:var(--rose);color:var(--rose)}
+.chat-area{flex:1;padding:14px 20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.chat-area::-webkit-scrollbar{width:0}
+.ai-label{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.ai-label::before{content:'✦';color:var(--gold);font-size:10px}
+.msg{max-width:82%;padding:11px 15px;border-radius:18px;font-size:13px;line-height:1.55}
+.msg.ai{background:var(--card);border:0.5px solid var(--bdr);border-bottom-left-radius:5px;align-self:flex-start}
+.msg.user{background:var(--noir);color:var(--cream);border-bottom-right-radius:5px;align-self:flex-end}
+.typing-dots{display:flex;gap:5px;padding:4px 0}
+.typing-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bounce 1.2s infinite}
+.typing-dot:nth-child(2){animation-delay:.15s}.typing-dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.outfit-card{background:var(--card);border:0.5px solid var(--bdr);border-radius:18px;padding:15px;align-self:flex-start;max-width:88%}
+.outfit-card-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.outfit-pieces{display:flex;gap:8px;margin-bottom:10px}
+.op{flex:1;background:#fff;border-radius:12px;padding:10px 6px;text-align:center;border:0.5px solid var(--bdr)}
+.op-em{font-size:26px}.op-lbl{font-size:9px;color:var(--muted);margin-top:4px}
+.outfit-actions{display:flex;gap:8px}
+.oa-btn{flex:1;padding:9px;border-radius:8px;font-size:11px;cursor:pointer;border:0.5px solid var(--bdr);background:transparent;color:var(--noir);font-family:'DM Sans',sans-serif}
+.oa-btn.dark{background:var(--noir);color:var(--cream);border-color:transparent}
+.chat-input-wrap{padding:10px 20px 14px;border-top:0.5px solid var(--bdr);display:flex;gap:10px;align-items:center;flex-shrink:0;background:var(--cream)}
+.chat-input{flex:1;background:var(--card);border:0.5px solid var(--bdr);border-radius:24px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--noir);outline:none}
+.chat-input:focus{border-color:var(--rose)}
+.send-btn{width:40px;height:40px;border-radius:50%;background:var(--noir);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--cream);font-size:17px;flex-shrink:0}
+.send-btn:disabled{opacity:.4}
+/* WARDROBE */
+.stats-row{display:flex;gap:8px;padding:12px 20px 4px}
+.stat-c{flex:1;background:var(--card);border:0.5px solid var(--bdr);border-radius:13px;padding:12px;text-align:center}
+.stat-v{font-family:'Playfair Display',serif;font-size:22px;color:var(--noir)}
+.stat-l{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:3px}
+.filter-row{display:flex;gap:8px;padding:10px 20px;overflow-x:auto}
+.filter-row::-webkit-scrollbar{height:0}
+.ftag{flex-shrink:0;padding:7px 15px;border-radius:20px;font-size:11px;border:0.5px solid var(--bdr);background:var(--card);color:var(--muted);cursor:pointer;transition:all .2s}
+.ftag.on{background:var(--noir);color:var(--cream);border-color:transparent}
+.w-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px}
+.wgi{background:var(--card);border:0.5px solid var(--bdr);border-radius:15px;padding:12px 8px 10px;text-align:center;cursor:pointer;position:relative;transition:all .2s}
+.wgi:hover{border-color:var(--rose);transform:translateY(-2px)}
+.wgi-em{font-size:34px}.wgi-name{font-size:11px;color:var(--noir);margin-top:5px;font-weight:500}
+.wgi-sub{font-size:9px;color:var(--muted);margin-top:2px}
+.wgi-img{width:100%;height:76px;object-fit:cover;border-radius:8px;margin-bottom:3px}
+.worn-badge{position:absolute;top:7px;right:7px;padding:2px 5px;border-radius:5px;font-size:8px;background:var(--sage);color:#fff}
+.worn-badge.hot{background:var(--rose)}
+.add-tile{background:transparent;border:1px dashed rgba(100,80,60,.18);border-radius:15px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;min-height:108px}
+.add-tile i{font-size:22px;color:var(--muted)}.add-tile span{font-size:10px;color:var(--muted)}
+/* ADD ITEM */
+.add-item-form{padding:16px 20px}
+.form-field{margin-bottom:14px}
+.form-field label{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px}
+.form-field input,.form-field select{width:100%;background:var(--card);border:0.5px solid var(--bdr);border-radius:10px;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--noir);outline:none;-webkit-appearance:none}
+.form-field input:focus,.form-field select:focus{border-color:var(--rose)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.img-upload-area{border:1px dashed rgba(100,80,60,.2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:var(--card);position:relative;overflow:hidden}
+.img-upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.form-actions{display:flex;gap:10px;margin-top:16px}
+.btn-cancel{flex:1;padding:13px;border-radius:10px;border:0.5px solid var(--bdr);background:transparent;color:var(--noir);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer}
+.btn-add{flex:2;padding:13px;border-radius:10px;background:var(--noir);color:var(--cream);border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer}
+.btn-add:disabled{opacity:.5;cursor:not-allowed}
+/* PROFILE */
+.prof-hero{padding:36px 20px 18px;display:flex;align-items:center;gap:14px;border-bottom:0.5px solid var(--bdr)}
+.avatar{width:66px;height:66px;border-radius:50%;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--noir);flex-shrink:0}
+.prof-name{font-family:'Playfair Display',serif;font-size:20px}
+.prof-style{font-size:12px;color:var(--muted);margin-top:2px}
+.edit-btn{margin-left:auto;border:0.5px solid var(--bdr);background:transparent;border-radius:8px;padding:8px 14px;font-size:11px;cursor:pointer;color:var(--noir);font-family:'DM Sans',sans-serif}
+.dna-box{margin:14px 20px;background:var(--card);border:0.5px solid var(--bdr);border-radius:16px;padding:15px}
+.dna-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.dna-tags{display:flex;flex-wrap:wrap;gap:7px}
+.dt{padding:6px 13px;border-radius:20px;font-size:11px;background:var(--noir);color:var(--cream)}
+.dt.lt{background:var(--blush);color:var(--rose-d)}
+.eco-bar{margin:0 20px 8px;background:var(--sage);border-radius:16px;padding:14px;display:flex;align-items:center;gap:14px}
+.eco-ring{width:52px;height:52px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:20px;color:#fff;flex-shrink:0}
+.eco-text h3{font-size:14px;color:#fff;font-weight:500}.eco-text p{font-size:11px;color:rgba(255,255,255,.7);margin-top:3px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:0.5px solid var(--bdr);cursor:pointer}
+.sr-left{display:flex;align-items:center;gap:11px}
+.sr-left i{font-size:19px;color:var(--muted)}
+.sr-main{font-size:14px;color:var(--noir)}.sr-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.sr-right{font-size:15px;color:var(--muted)}
+/* STITCH */
+.studio-hero{background:var(--noir);margin:12px 20px;border-radius:20px;padding:22px 20px}
+.sh-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:2px;text-transform:uppercase;background:rgba(201,168,76,.15);color:var(--gold);padding:4px 10px;border-radius:3px;margin-bottom:12px;border:0.5px solid rgba(201,168,76,.2)}
+.sh-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--cream);line-height:1.15}
+.sh-title em{color:var(--gold);font-style:italic}
+.sh-sub{font-size:12px;color:rgba(245,240,232,.45);margin-top:6px;line-height:1.5}
+.upload-zone{margin-top:16px;border:1px dashed rgba(245,240,232,.2);border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;transition:all .2s}
+.upload-zone:hover{border-color:rgba(201,168,76,.5)}
+.upload-text{font-size:12px;color:rgba(245,240,232,.5);text-align:center;line-height:1.4}
+.upload-text strong{color:var(--gold);font-weight:500}
+.inspo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px}
+.inspo-card{border-radius:14px;overflow:hidden;cursor:pointer;border:0.5px solid var(--bdr);transition:all .2s}
+.inspo-card:hover{transform:translateY(-2px);border-color:var(--rose)}
+.inspo-emoji-bg{height:80px;display:flex;align-items:center;justify-content:center;font-size:38px}
+.inspo-label{padding:7px 8px;background:var(--card)}
+.inspo-name{font-size:11px;font-weight:500;color:var(--noir)}.inspo-sub{font-size:9px;color:var(--muted);margin-top:1px}
+.brief-mini-row{display:flex;gap:10px;padding:0 20px;overflow-x:auto}
+.brief-mini-row::-webkit-scrollbar{height:0}
+.brief-mini{flex-shrink:0;width:108px;background:var(--card);border:0.5px solid var(--bdr);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .2s}
+.brief-mini:hover{border-color:var(--rose);transform:translateY(-2px)}
+.brief-mini-top{height:66px;display:flex;align-items:center;justify-content:center;font-size:32px}
+.brief-mini-info{padding:8px}
+.brief-mini-name{font-size:11px;font-weight:500;color:var(--noir)}.brief-mini-date{font-size:9px;color:var(--muted);margin-top:2px}
+.brief-badge{display:inline-block;font-size:8px;padding:2px 6px;border-radius:4px;margin-top:4px}
+.badge-ready{background:#e8f5e8;color:#3a7a3a}.badge-draft{background:var(--blush);color:var(--rose-d)}
+/* ANALYSIS */
+#s-analysis{background:var(--noir)}
+.analysis-header{padding:40px 24px 20px;flex-shrink:0}
+.analysis-header h2{font-family:'Playfair Display',serif;font-size:24px;color:var(--cream)}
+.analysis-header p{font-size:12px;color:rgba(245,240,232,.4);margin-top:4px}
+.analysis-strip{height:100px;background:rgba(255,255,255,.03);border-bottom:0.5px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:52px;flex-shrink:0;position:relative}
+.scan-line{position:absolute;left:0;right:0;height:1px;background:var(--gold);opacity:.4;animation:scanDown 2s ease-in-out infinite}
+@keyframes scanDown{0%{top:0;opacity:0}10%{opacity:.4}90%{opacity:.4}100%{top:100%;opacity:0}}
+.step-list{padding:16px 24px;display:flex;flex-direction:column}
+.step-item{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:0.5px solid rgba(255,255,255,.04)}
+.step-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.step-icon.wait{background:rgba(255,255,255,.04);color:rgba(245,240,232,.2)}
+.step-icon.active{background:rgba(201,168,76,.15);color:var(--gold);animation:pulse 1.2s infinite}
+.step-icon.done{background:rgba(122,158,138,.2);color:var(--sage)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.step-name{font-size:13px;color:var(--cream)}
+.step-detail{font-size:11px;margin-top:3px;line-height:1.4}
+.step-detail.wait{color:rgba(245,240,232,.2)}.step-detail.active{color:rgba(201,168,76,.7)}.step-detail.done{color:var(--sage)}
+.analysis-progress{padding:16px 24px;flex-shrink:0}
+.prog-bg{height:3px;background:rgba(255,255,255,.06);border-radius:2px;margin-bottom:8px}
+.prog-fill{height:3px;background:var(--gold);border-radius:2px;transition:width .5s ease;width:0%}
+.prog-label{font-size:10px;color:rgba(245,240,232,.3);letter-spacing:1px;text-transform:uppercase}
+/* BRIEF EDITOR */
+.brief-section{padding:0 20px;margin-bottom:4px}
+.bs-header{display:flex;align-items:center;justify-content:space-between;padding:12px 0 8px;border-bottom:0.5px solid var(--bdr)}
+.bs-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.bs-title i{font-size:14px;color:var(--rose)}
+.brief-field{padding:10px 0;border-bottom:0.5px solid var(--bdr)}
+.brief-field:last-child{border:none}
+.bf-label{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.bf-value{font-size:13px;color:var(--noir);line-height:1.5}
+.bf-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.bf-tag{padding:4px 10px;border-radius:12px;font-size:11px;background:var(--card);border:0.5px solid var(--bdr);color:var(--noir)}
+.measure-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.measure-item{background:var(--card);border:0.5px solid var(--bdr);border-radius:10px;padding:10px 12px}
+.mi-label{font-size:10px;color:var(--muted);margin-bottom:2px}
+.mi-value input{width:100%;border:none;background:transparent;font-size:14px;font-weight:500;color:var(--noir);font-family:'DM Sans',sans-serif;outline:none}
+.brief-actions{padding:12px 20px 16px;display:flex;gap:10px;flex-shrink:0;border-top:0.5px solid var(--bdr);background:var(--cream)}
+.ba-btn{flex:1;padding:13px;border-radius:12px;font-size:13px;cursor:pointer;border:0.5px solid var(--bdr);background:var(--card);color:var(--noir);font-family:'DM Sans',sans-serif}
+.ba-btn.gold{background:var(--gold);color:var(--noir);border-color:transparent;font-weight:500}
+/* PDF PREVIEW */
+#s-preview-brief{background:#e8e4de}
+.pdf-frame{flex:1;background:#fff;margin:10px 16px;border-radius:8px;overflow-y:auto;box-shadow:0 4px 24px rgba(14,13,12,.15)}
+.pdf-frame::-webkit-scrollbar{width:0}
+.pdf-header{background:var(--noir);padding:18px 22px;display:flex;justify-content:space-between;align-items:flex-start}
+.pdf-logo{font-family:'Playfair Display',serif;font-size:20px;color:var(--cream)}
+.pdf-logo em{color:var(--gold);font-style:italic}
+.pdf-logo span{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(245,240,232,.35);display:block;margin-top:2px}
+.pdf-meta{text-align:right;font-size:10px;color:rgba(245,240,232,.4);line-height:1.6}
+.pdf-body{padding:18px 22px}
+.pdf-doc-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--noir);margin-bottom:3px}
+.pdf-subtitle{font-size:10px;color:var(--muted);letter-spacing:.5px;margin-bottom:16px}
+.pdf-divider{height:.5px;background:var(--bdr);margin:12px 0}
+.pdf-section-title{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.pdf-row{display:flex;justify-content:space-between;margin-bottom:6px}
+.pdf-key{font-size:11px;color:var(--muted)}.pdf-val{font-size:11px;color:var(--noir);font-weight:500;text-align:right;max-width:55%}
+.pdf-note-box{background:var(--cream);border-radius:8px;padding:10px 12px;border-left:3px solid var(--gold);margin:10px 0}
+.pdf-note-box p{font-size:11px;color:var(--noir);line-height:1.6}
+.pdf-measure-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.pdf-m{background:var(--cream);border-radius:6px;padding:7px 10px;text-align:center}
+.pdf-m-lbl{font-size:9px;color:var(--muted);margin-bottom:2px}.pdf-m-val{font-size:12px;font-weight:500;color:var(--noir)}
+.pdf-footer{background:var(--cream);padding:10px 22px;display:flex;align-items:center;justify-content:space-between;border-top:.5px solid var(--bdr)}
+.pdf-footer-note{font-size:9px;color:var(--muted);line-height:1.5}
+.preview-actions{padding:10px 16px 14px;display:flex;gap:8px;flex-shrink:0}
+.pa-btn{flex:1;padding:11px;border-radius:12px;font-size:12px;cursor:pointer;border:0.5px solid var(--bdr);background:#fff;color:var(--noir);display:flex;align-items:center;justify-content:center;gap:5px;font-family:'DM Sans',sans-serif}
+.pa-btn.gold{background:var(--gold);color:var(--noir);border-color:transparent;font-weight:500}
+.pa-btn i{font-size:15px}
+/* SKETCH */
+#s-sketch{background:var(--noir)}
+.sketch-topbar{display:flex;align-items:center;justify-content:space-between;padding:36px 20px 14px;flex-shrink:0;border-bottom:0.5px solid rgba(255,255,255,.06)}
+.sketch-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--cream)}
+.sketch-title em{color:var(--gold);font-style:italic}
+.sketch-tabs{display:flex;border-bottom:0.5px solid rgba(255,255,255,.08);flex-shrink:0}
+.sketch-tab{flex:1;padding:11px 0;text-align:center;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:rgba(245,240,232,.35);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.sketch-tab.on{color:var(--gold);border-bottom-color:var(--gold)}
+.sketch-canvas-wrap{flex:1;display:flex;flex-direction:column;padding:14px 20px;gap:12px;overflow-y:auto}
+.sketch-canvas-wrap::-webkit-scrollbar{width:0}
+.sketch-frame{background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;min-height:280px;flex-shrink:0}
+.sketch-placeholder{text-align:center;padding:32px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.sketch-placeholder p{font-size:12px;color:rgba(245,240,232,.35);line-height:1.6}
+.sketch-generating{display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;width:100%}
+.sketch-generating.show{display:flex}
+.sketch-result{display:none;width:100%}
+.sketch-result.show{display:flex;align-items:center;justify-content:center}
+.gen-ring{width:60px;height:60px;border-radius:50%;border:1.5px solid rgba(201,168,76,.3);border-top-color:var(--gold);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gen-name{font-size:13px;color:var(--cream);text-align:center}
+.gen-step{font-size:10px;color:rgba(245,240,232,.3);letter-spacing:1px;text-transform:uppercase;text-align:center}
+.sk-style-row{display:flex;gap:8px;overflow-x:auto;flex-shrink:0}
+.sk-style-row::-webkit-scrollbar{height:0}
+.sk-style{flex-shrink:0;padding:7px 13px;border-radius:20px;font-size:11px;border:0.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(245,240,232,.5);cursor:pointer;white-space:nowrap;transition:all .2s}
+.sk-style.on{background:rgba(201,168,76,.15);color:var(--gold);border-color:rgba(201,168,76,.3)}
+.sketch-prompt-row{display:flex;gap:8px;flex-shrink:0}
+.sketch-prompt-input{flex:1;background:rgba(255,255,255,.05);border:0.5px solid rgba(255,255,255,.1);border-radius:12px;padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--cream);outline:none}
+.sketch-gen-btn{padding:11px 16px;background:var(--gold);color:var(--noir);border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.sketch-gen-btn:disabled{opacity:.4;cursor:not-allowed}
+.sketch-actions{display:flex;gap:8px;flex-shrink:0}
+.sk-act-btn{flex:1;padding:10px;border-radius:12px;font-size:11px;cursor:pointer;border:0.5px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(245,240,232,.7);display:flex;align-items:center;justify-content:center;gap:4px;font-family:'DM Sans',sans-serif}
+.sk-act-btn.gold{background:var(--gold);color:var(--noir);border-color:transparent;font-weight:500}
+.sk-act-btn i{font-size:14px}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.detail-tile{background:rgba(255,255,255,.03);border:0.5px solid rgba(255,255,255,.08);border-radius:14px;min-height:130px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.detail-tile:hover{border-color:var(--gold)}
+.detail-inner{text-align:center;padding:16px}
+.detail-inner .em{font-size:28px}.detail-inner .lbl{font-size:9px;color:rgba(245,240,232,.3);margin-top:6px;letter-spacing:1px;text-transform:uppercase}
+/* BRIEFS LIST */
+.briefs-list{padding:0 20px;display:flex;flex-direction:column;gap:10px}
+.brief-card{background:var(--card);border:0.5px solid var(--bdr);border-radius:16px;overflow:hidden;cursor:pointer;display:flex;transition:all .2s}
+.brief-card:hover{border-color:var(--rose)}
+.brief-card-left{width:78px;display:flex;align-items:center;justify-content:center;font-size:38px;flex-shrink:0;background:var(--cream)}
+.brief-card-body{flex:1;padding:12px 14px}
+.bc-name{font-size:14px;font-weight:500;color:var(--noir)}.bc-type{font-size:11px;color:var(--muted);margin-top:2px}
+.bc-meta{display:flex;align-items:center;gap:8px;margin-top:8px}
+.bc-date{font-size:10px;color:var(--muted)}
+.bc-status{font-size:9px;padding:2px 8px;border-radius:10px}
+.bc-status.ready{background:#e8f5e8;color:#3a7a3a}.bc-status.draft{background:var(--blush);color:var(--rose-d)}
+.brief-card-arrow{display:flex;align-items:center;padding:0 14px;color:var(--muted);font-size:16px}
+.new-brief-btn{margin:0 20px;padding:14px;background:var(--noir);color:var(--cream);border:none;border-radius:14px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.new-brief-btn i{font-size:18px;color:var(--gold)}
+/* MODALS */
+.modal-overlay{position:absolute;inset:0;background:rgba(14,13,12,.5);z-index:50;display:none;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal-sheet{width:100%;background:var(--cream);border-radius:24px 24px 0 0;padding:20px 24px 36px;animation:slideUp .3s ease}
+@keyframes slideUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-handle{width:36px;height:4px;background:var(--bdr);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-family:'Playfair Display',serif;font-size:20px;margin-bottom:16px}
+/* TOAST */
+.toast{position:absolute;bottom:84px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--noir);color:var(--cream);padding:10px 20px;border-radius:24px;font-size:12px;white-space:nowrap;opacity:0;transition:all .3s;z-index:200;border:.5px solid rgba(255,255,255,.1)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ANIMATIONS */
+.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+
+<!-- SPLASH -->
+<div class="screen active" id="splash">
+  <div class="splash-body">
+    <div class="splash-orb">👗</div>
+    <div class="splash-wm">Mir<em>é</em></div>
+    <div class="splash-tag">Your AI Style Companion</div>
+  </div>
+  <div class="splash-cta">
+    <button class="btn-gold" onclick="go('signup')">Get Started</button>
+    <button class="btn-ghost" onclick="go('login')">Sign In</button>
+  </div>
+</div>
+
+<!-- SIGNUP -->
+<div class="screen" id="signup" style="background:var(--noir)">
+  <div style="padding:36px 28px 16px;flex-shrink:0">
+    <button class="back-btn" onclick="go('splash')" style="color:var(--cream)"><i class="ti ti-arrow-left"></i></button>
+  </div>
+  <div class="form-wrap">
+    <div class="form-title">Create your<br><em>Miré</em> account</div>
+    <div class="form-sub">Your personal AI stylist awaits.</div>
+    <div class="form-err" id="su-err"></div>
+    <div class="field"><label>Full Name *</label><input id="su-name" type="text" placeholder="Riya Mehta" autocomplete="name"></div>
+    <div class="field"><label>Email *</label><input id="su-email" type="email" placeholder="riya@example.com" autocomplete="email"></div>
+    <div class="field"><label>Password *</label><input id="su-pw" type="password" placeholder="Min 6 characters" autocomplete="new-password"></div>
+    <div class="field"><label>City</label><input id="su-city" type="text" placeholder="Rajkot"></div>
+    <button class="btn-gold" id="su-btn" onclick="doSignup()">Create Account</button>
+    <div class="form-switch">Already have an account? <span onclick="go('login')">Sign in</span></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="screen" id="login" style="background:var(--noir)">
+  <div style="padding:36px 28px 16px;flex-shrink:0">
+    <button class="back-btn" onclick="go('splash')" style="color:var(--cream)"><i class="ti ti-arrow-left"></i></button>
+  </div>
+  <div class="form-wrap">
+    <div class="form-title">Welcome back<br>to <em>Miré</em></div>
+    <div class="form-sub">Sign in to your wardrobe.</div>
+    <div class="form-err" id="li-err"></div>
+    <div class="field"><label>Email</label><input id="li-email" type="email" placeholder="riya@example.com" autocomplete="email"></div>
+    <div class="field"><label>Password</label><input id="li-pw" type="password" placeholder="Your password" autocomplete="current-password"></div>
+    <button class="btn-gold" id="li-btn" onclick="doLogin()">Sign In</button>
+    <div class="form-switch">No account? <span onclick="go('signup')">Create one</span></div>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div class="screen" id="onboard">
+  <div class="ob-step active" id="ob1">
+    <div class="ob-header"><div class="ob-num">Step 1 of 3</div><div class="ob-q">What's your <em>style</em>?</div></div>
+    <div class="ob-opts" id="ob1-opts">
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🤍 Minimalist</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🎨 Bold & Colourful</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🌿 Earthy Natural</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">✨ Glam & Dressy</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🏙️ Street Style</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🎀 Soft Feminine</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🧥 Classic Tailored</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🌸 Boho Chic</div>
+    </div>
+    <div class="ob-footer"><div class="ob-dots"><div class="ob-dot on"></div><div class="ob-dot"></div><div class="ob-dot"></div></div><button class="ob-next" onclick="nextOb(2)">Next →</button></div>
+  </div>
+  <div class="ob-step" id="ob2">
+    <div class="ob-header"><div class="ob-num">Step 2 of 3</div><div class="ob-q">Which <em>occasions</em>?</div></div>
+    <div class="ob-opts" id="ob2-opts">
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">💼 Work / Office</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🥂 Evenings Out</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">☀️ Casual Weekends</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🏋️ Gym & Active</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">✈️ Travel</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">💒 Events & Weddings</div>
+    </div>
+    <div class="ob-footer"><div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot on"></div><div class="ob-dot"></div></div><button class="ob-next" onclick="nextOb(3)">Next →</button></div>
+  </div>
+  <div class="ob-step" id="ob3">
+    <div class="ob-header"><div class="ob-num">Step 3 of 3</div><div class="ob-q">Your <em>budget</em> per item?</div></div>
+    <div class="ob-opts" id="ob3-opts">
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">💚 Under ₹1,000</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">💛 ₹1,000–3,000</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">🧡 ₹3,000–8,000</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">❤️ ₹8,000–20,000</div>
+      <div class="ob-chip" onclick="this.classList.toggle('sel')">💎 No limit</div>
+    </div>
+    <div class="ob-footer"><div class="ob-dots"><div class="ob-dot"></div><div class="ob-dot"></div><div class="ob-dot on"></div></div><button class="ob-next" onclick="finishOnboard()" style="background:var(--rose)">Let's Go ✦</button></div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="screen" id="home">
+  <div class="top-bar">
+    <div class="wordmark">Mir<em>é</em></div>
+    <div style="display:flex;gap:8px">
+      <div class="icon-btn" onclick="showModal('notifModal')"><i class="ti ti-bell"></i><div class="notif-dot" id="notifDot"></div></div>
+      <div class="icon-btn" onclick="go('profile')"><i class="ti ti-user-circle"></i></div>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="greeting"><p id="greetLine">Good morning ✦</p><h2 id="greetName">What are you wearing today?</h2></div>
+    <div style="padding:0 20px 10px">
+      <div class="weather-card">
+        <div><div class="w-city" id="wCity">Rajkot · Sunny</div><div class="w-temp" id="wTemp">34°C</div><div class="w-tip" id="wTip">Light breathable outfits ☀️</div></div>
+        <div class="w-icon" id="wIcon">☀️</div>
+      </div>
+    </div>
+    <div class="sec-title">Outfit of the Day</div>
+    <div class="ootd-card">
+      <div class="ootd-badge"><i class="ti ti-wand" style="font-size:10px"></i> AI Curated</div>
+      <div class="ootd-title" id="ootdTitle">Loading your look...</div>
+      <div class="ootd-sub" id="ootdSub">Fetching from your wardrobe</div>
+      <div class="ootd-pieces" id="ootdPieces"><div class="ootd-piece">✨<div class="ootd-piece-lbl">Loading</div></div></div>
+      <div class="ootd-actions">
+        <button class="ootd-btn" onclick="go('stylist')">🔀 Remix</button>
+        <button class="ootd-btn" onclick="showModal('arModal')">👁 Try On</button>
+        <button class="ootd-btn gold" onclick="showToast('Outfit saved ✓')">Save ✓</button>
+      </div>
+    </div>
+    <div class="sec-title">Quick Actions</div>
+    <div class="quick-grid">
+      <div class="quick-tile" onclick="go('stylist')"><i class="ti ti-wand"></i><span>Style Me</span></div>
+      <div class="quick-tile" onclick="go('wardrobe')"><i class="ti ti-hanger"></i><span>Wardrobe</span></div>
+      <div class="quick-tile" onclick="go('stitch')"><i class="ti ti-needle-thread"></i><span>Stitch Studio</span></div>
+      <div class="quick-tile" onclick="showModal('packModal')"><i class="ti ti-briefcase"></i><span>Pack Trip</span></div>
+    </div>
+    <div class="sec-title">Style Insights</div>
+    <div class="hscroll" style="padding-bottom:4px">
+      <div class="insight-chip"><i class="ti ti-flame"></i><span id="insightUnworn">Loading...</span></div>
+      <div class="insight-chip"><i class="ti ti-leaf"></i><span id="insightEco">Eco: —</span></div>
+      <div class="insight-chip"><i class="ti ti-coin"></i><span id="insightCpw">₹—/wear</span></div>
+      <div class="insight-chip"><i class="ti ti-trending-up"></i>Earthy tones trending</div>
+    </div>
+    <div class="sec-title">Recent Wardrobe</div>
+    <div class="hscroll" id="recentWardrobe" style="padding-bottom:16px">
+      <div class="mwi"><div class="mwi-em">👗</div><div class="mwi-name">Add items</div><div class="mwi-worn">to start</div></div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item on" onclick="go('home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-item" onclick="go('wardrobe')"><i class="ti ti-hanger"></i>Wardrobe</button>
+    <button class="nav-item" onclick="go('stitch')"><i class="ti ti-needle-thread"></i>Stitch</button>
+    <button class="nav-item" onclick="go('stylist')"><i class="ti ti-wand"></i>Stylist</button>
+    <button class="nav-item" onclick="go('profile')"><i class="ti ti-user"></i>Profile</button>
+  </div>
+</div>
+
+<!-- STYLIST -->
+<div class="screen" id="stylist">
+  <div class="top-bar" style="padding-top:36px">
+    <button class="back-btn" onclick="go('home')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">AI <em>Stylist</em></div>
+    <div class="icon-btn" onclick="clearChat()"><i class="ti ti-refresh"></i></div>
+  </div>
+  <div class="quick-prompts">
+    <div class="qp" onclick="sendQuick('Suggest an outfit for today')">✨ Today</div>
+    <div class="qp" onclick="sendQuick('I have a dinner date tonight, what should I wear?')">🍷 Date night</div>
+    <div class="qp" onclick="sendQuick('Help me with a work outfit for an important meeting')">💼 Work look</div>
+    <div class="qp" onclick="sendQuick('What colours suit warm skin tones?')">🎨 Colours</div>
+    <div class="qp" onclick="sendQuick('Help me build a capsule wardrobe')">📦 Capsule</div>
+  </div>
+  <div class="chat-area" id="chatArea">
+    <div class="fade-in">
+      <div class="ai-label">Miré AI</div>
+      <div class="msg ai">Hello! I'm your personal style assistant. Tell me about your plans today or ask me anything about fashion. ✨</div>
+    </div>
+  </div>
+  <div class="chat-input-wrap">
+    <input class="chat-input" id="chatInput" placeholder="Ask your stylist anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)sendMsg()">
+    <button class="send-btn" id="sendBtn" onclick="sendMsg()"><i class="ti ti-send"></i></button>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="go('home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-item" onclick="go('wardrobe')"><i class="ti ti-hanger"></i>Wardrobe</button>
+    <button class="nav-item" onclick="go('stitch')"><i class="ti ti-needle-thread"></i>Stitch</button>
+    <button class="nav-item on"><i class="ti ti-wand"></i>Stylist</button>
+    <button class="nav-item" onclick="go('profile')"><i class="ti ti-user"></i>Profile</button>
+  </div>
+</div>
+
+<!-- WARDROBE -->
+<div class="screen" id="wardrobe">
+  <div class="top-bar" style="padding-top:36px">
+    <button class="back-btn" onclick="go('home')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">My <em>Wardrobe</em></div>
+    <div class="icon-btn" onclick="go('addItem')"><i class="ti ti-plus"></i></div>
+  </div>
+  <div class="scroll">
+    <div class="stats-row">
+      <div class="stat-c"><div class="stat-v" id="wTotal">0</div><div class="stat-l">Total</div></div>
+      <div class="stat-c"><div class="stat-v" id="wUnworn">0</div><div class="stat-l">Unworn</div></div>
+      <div class="stat-c"><div class="stat-v" id="wEco">—</div><div class="stat-l">Eco</div></div>
+      <div class="stat-c"><div class="stat-v" id="wCpw">₹0</div><div class="stat-l">/ Wear</div></div>
+    </div>
+    <div class="filter-row">
+      <div class="ftag on" onclick="filterW(this,'all')">All</div>
+      <div class="ftag" onclick="filterW(this,'tops')">Tops</div>
+      <div class="ftag" onclick="filterW(this,'bottoms')">Bottoms</div>
+      <div class="ftag" onclick="filterW(this,'dresses')">Dresses</div>
+      <div class="ftag" onclick="filterW(this,'shoes')">Shoes</div>
+      <div class="ftag" onclick="filterW(this,'accessories')">Accessories</div>
+      <div class="ftag" onclick="filterW(this,'outerwear')">Outerwear</div>
+    </div>
+    <div class="w-grid" id="wardrobeGrid" style="padding-bottom:16px">
+      <div class="add-tile" onclick="go('addItem')"><i class="ti ti-plus"></i><span>Add first item</span></div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="go('home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-item on"><i class="ti ti-hanger"></i>Wardrobe</button>
+    <button class="nav-item" onclick="go('stitch')"><i class="ti ti-needle-thread"></i>Stitch</button>
+    <button class="nav-item" onclick="go('stylist')"><i class="ti ti-wand"></i>Stylist</button>
+    <button class="nav-item" onclick="go('profile')"><i class="ti ti-user"></i>Profile</button>
+  </div>
+</div>
+
+<!-- ADD ITEM -->
+<div class="screen" id="addItem">
+  <div class="top-bar" style="padding-top:36px">
+    <button class="back-btn" onclick="go('wardrobe')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">Add <em>Item</em></div>
+    <div></div>
+  </div>
+  <div class="scroll">
+    <div class="add-item-form">
+      <div class="form-err" id="add-err"></div>
+      <div class="form-field">
+        <label>Photo (optional)</label>
+        <div class="img-upload-area" id="imgUpArea">
+          <input type="file" accept="image/*" id="itemImg" onchange="previewImg(this)">
+          <div id="imgInner"><div style="font-size:32px">📸</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Tap to upload photo</div></div>
+          <img id="imgPreview" style="width:100%;height:120px;object-fit:cover;border-radius:8px;display:none" alt="">
+        </div>
+      </div>
+      <div class="form-field"><label>Name *</label><input id="i-name" type="text" placeholder="e.g. White Linen Dress"></div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Category *</label>
+          <select id="i-cat">
+            <option value="">Select...</option>
+            <option value="tops">Tops</option>
+            <option value="bottoms">Bottoms</option>
+            <option value="dresses">Dresses</option>
+            <option value="shoes">Shoes</option>
+            <option value="accessories">Accessories</option>
+            <option value="outerwear">Outerwear</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Colour</label><input id="i-color" type="text" placeholder="e.g. Cream"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label>Fabric</label><input id="i-fabric" type="text" placeholder="e.g. Linen"></div>
+        <div class="form-field"><label>Brand</label><input id="i-brand" type="text" placeholder="e.g. Zara"></div>
+      </div>
+      <div class="form-field"><label>Purchase Price (₹)</label><input id="i-price" type="number" placeholder="e.g. 2400"></div>
+      <div class="form-field">
+        <label>Season</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="season-chips">
+          <div class="ob-chip" data-group="season" onclick="this.classList.toggle('sel')">Summer</div>
+          <div class="ob-chip" data-group="season" onclick="this.classList.toggle('sel')">Winter</div>
+          <div class="ob-chip" data-group="season" onclick="this.classList.toggle('sel')">Monsoon</div>
+          <div class="ob-chip" data-group="season" onclick="this.classList.toggle('sel')">All Season</div>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Occasions</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px" id="occ-chips">
+          <div class="ob-chip" data-group="occasion" onclick="this.classList.toggle('sel')">Casual</div>
+          <div class="ob-chip" data-group="occasion" onclick="this.classList.toggle('sel')">Work</div>
+          <div class="ob-chip" data-group="occasion" onclick="this.classList.toggle('sel')">Festive</div>
+          <div class="ob-chip" data-group="occasion" onclick="this.classList.toggle('sel')">Party</div>
+          <div class="ob-chip" data-group="occasion" onclick="this.classList.toggle('sel')">Travel</div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="go('wardrobe')">Cancel</button>
+        <button class="btn-add" id="addItemBtn" onclick="submitAdd()">Add to Wardrobe</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE -->
+<div class="screen" id="profile">
+  <div class="top-bar" style="padding-top:36px;border-bottom:none">
+    <button class="back-btn" onclick="go('home')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">My <em>Profile</em></div>
+    <div class="icon-btn"><i class="ti ti-settings"></i></div>
+  </div>
+  <div class="scroll">
+    <div class="prof-hero">
+      <div class="avatar">👩</div>
+      <div><div class="prof-name" id="profName">Loading...</div><div class="prof-style" id="profStyle">Fashion Enthusiast</div></div>
+      <button class="edit-btn">Edit</button>
+    </div>
+    <div class="dna-box">
+      <div class="dna-lbl">✦ Style DNA</div>
+      <div class="dna-tags" id="profDNA"><div class="dt">Loading...</div></div>
+    </div>
+    <div class="eco-bar">
+      <div class="eco-ring" id="ecoRing">—</div>
+      <div class="eco-text"><h3>Sustainability Score</h3><p id="ecoText">Add wardrobe items to calculate</p></div>
+    </div>
+    <div style="margin:14px 0 4px">
+      <div class="setting-row" onclick="go('stylist')"><div class="sr-left"><i class="ti ti-wand"></i><div><div class="sr-main">AI Stylist Chat</div><div class="sr-sub">Personalised outfit advice</div></div></div><i class="ti ti-chevron-right sr-right"></i></div>
+      <div class="setting-row" onclick="go('stitch')"><div class="sr-left"><i class="ti ti-needle-thread"></i><div><div class="sr-main">Stitch Studio</div><div class="sr-sub" id="briefCountTxt">0 briefs created</div></div></div><i class="ti ti-chevron-right sr-right"></i></div>
+      <div class="setting-row"><div class="sr-left"><i class="ti ti-ruler-2"></i><div><div class="sr-main">Measurements</div><div class="sr-sub">Bust, waist, hip & more</div></div></div><i class="ti ti-chevron-right sr-right"></i></div>
+      <div class="setting-row"><div class="sr-left"><i class="ti ti-chart-bar"></i><div><div class="sr-main">Spending Analytics</div><div class="sr-sub" id="spendTxt">₹0 tracked</div></div></div><i class="ti ti-chevron-right sr-right"></i></div>
+      <div class="setting-row" style="border:none" onclick="doLogout()"><div class="sr-left"><i class="ti ti-logout" style="color:var(--rose)"></i><div><div class="sr-main" style="color:var(--rose)">Sign Out</div></div></div></div>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="go('home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-item" onclick="go('wardrobe')"><i class="ti ti-hanger"></i>Wardrobe</button>
+    <button class="nav-item" onclick="go('stitch')"><i class="ti ti-needle-thread"></i>Stitch</button>
+    <button class="nav-item" onclick="go('stylist')"><i class="ti ti-wand"></i>Stylist</button>
+    <button class="nav-item on"><i class="ti ti-user"></i>Profile</button>
+  </div>
+</div>
+
+<!-- STITCH HOME -->
+<div class="screen" id="stitch">
+  <div class="top-bar">
+    <button class="back-btn" onclick="go('home')"><i class="ti ti-arrow-left"></i></button>
+    <div class="wordmark">Stitch <em>Studio</em></div>
+    <div class="icon-btn" onclick="go('s-briefs')"><i class="ti ti-folder"></i></div>
+  </div>
+  <div class="scroll">
+    <div class="studio-hero">
+      <div class="sh-badge"><i class="ti ti-wand" style="font-size:10px"></i> AI Powered</div>
+      <div class="sh-title">Upload <em>inspo</em>.<br>Get a tailor brief.</div>
+      <div class="sh-sub">AI breaks down any look into fabric, measurements & stitching notes.</div>
+      <div class="upload-zone" onclick="go('s-upload')">
+        <div style="font-size:32px">📸</div>
+        <div class="upload-text"><strong>Tap to upload</strong> inspiration photo</div>
+      </div>
+    </div>
+    <div class="sec-title">Inspiration Starters</div>
+    <div class="inspo-grid">
+      <div class="inspo-card" onclick="loadInspo('Anarkali','👘','Deep Terracotta','Georgette')"><div class="inspo-emoji-bg" style="background:#f5ece0">👘</div><div class="inspo-label"><div class="inspo-name">Anarkali</div><div class="inspo-sub">Ethnic · Festive</div></div></div>
+      <div class="inspo-card" onclick="loadInspo('Co-ord Set','👗','Dusty Rose','Linen')"><div class="inspo-emoji-bg" style="background:#f0e8f0">👗</div><div class="inspo-label"><div class="inspo-name">Co-ord Set</div><div class="inspo-sub">Casual · Modern</div></div></div>
+      <div class="inspo-card" onclick="loadInspo('Blazer Dress','🧥','Classic Noir','Crepe')"><div class="inspo-emoji-bg" style="background:#1a1410">🧥</div><div class="inspo-label"><div class="inspo-name">Blazer Dress</div><div class="inspo-sub">Formal · Power</div></div></div>
+      <div class="inspo-card" onclick="loadInspo('Sharara Set','🩱','Ivory & Gold','Organza')"><div class="inspo-emoji-bg" style="background:#f8f4e8">🩱</div><div class="inspo-label"><div class="inspo-name">Sharara Set</div><div class="inspo-sub">Bridal · Wedding</div></div></div>
+      <div class="inspo-card" onclick="loadInspo('Midi Dress','👒','Sage Green','Linen')"><div class="inspo-emoji-bg" style="background:#e8f0e8">👒</div><div class="inspo-label"><div class="inspo-name">Midi Dress</div><div class="inspo-sub">Summer · Breezy</div></div></div>
+      <div class="inspo-card" onclick="loadInspo('Palazzo Set','🎀','Earthy Mauve','Chiffon')"><div class="inspo-emoji-bg" style="background:#ede0e8">🎀</div><div class="inspo-label"><div class="inspo-name">Palazzo Set</div><div class="inspo-sub">Casual · Comfort</div></div></div>
+    </div>
+    <div class="sec-title">Recent Briefs</div>
+    <div class="brief-mini-row" id="recentBriefs" style="padding-bottom:20px">
+      <div style="font-size:12px;color:var(--muted)">No briefs yet</div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-item" onclick="go('home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-item" onclick="go('wardrobe')"><i class="ti ti-hanger"></i>Wardrobe</button>
+    <button class="nav-item on"><i class="ti ti-needle-thread"></i>Stitch</button>
+    <button class="nav-item" onclick="go('stylist')"><i class="ti ti-wand"></i>Stylist</button>
+    <button class="nav-item" onclick="go('profile')"><i class="ti ti-user"></i>Profile</button>
+  </div>
+</div>
+
+<!-- STITCH UPLOAD -->
+<div class="screen" id="s-upload">
+  <div class="top-bar" style="padding-top:36px">
+    <button class="back-btn" onclick="go('stitch')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">Upload <em>Photo</em></div>
+    <div></div>
+  </div>
+  <div style="flex:1;background:var(--noir);margin:12px 20px;border-radius:20px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border:0.5px solid rgba(255,255,255,.06)" id="uploadArea">
+    <div id="uploadPlaceholder" style="text-align:center;padding:32px"><div style="font-size:48px">🪡</div><p style="font-size:13px;color:rgba(245,240,232,.4);margin-top:10px;line-height:1.5">Upload an inspiration photo<br>or use a starter below</p></div>
+    <img id="uploadPreview" style="width:100%;height:100%;object-fit:cover;border-radius:20px;display:none" alt="">
+    <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleStitchFile(this)">
+  </div>
+  <div style="padding:8px 20px 0;flex-shrink:0;text-align:center"><p style="font-size:11px;color:var(--muted)">💡 Clear, well-lit photos work best</p></div>
+  <div style="padding:8px 20px;display:flex;gap:10px;flex-shrink:0">
+    <button style="flex:1;padding:13px;border-radius:12px;border:0.5px solid var(--bdr);background:var(--card);color:var(--noir);font-family:'DM Sans',sans-serif;cursor:pointer" onclick="go('stitch')">Cancel</button>
+    <button style="flex:2;padding:13px;border-radius:12px;background:var(--noir);color:var(--cream);border:none;font-family:'DM Sans',sans-serif;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px" onclick="startAnalysis()"><i class="ti ti-wand"></i>Analyse with AI</button>
+  </div>
+  <div style="padding:0 20px 16px">
+    <button style="width:100%;padding:11px;border-radius:12px;font-size:12px;border:0.5px solid var(--bdr);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;cursor:pointer" onclick="loadInspo('Anarkali','👘','Deep Terracotta','Georgette')">Try sample: Anarkali Suit →</button>
+  </div>
+</div>
+
+<!-- STITCH ANALYSIS -->
+<div class="screen" id="s-analysis">
+  <div class="analysis-header"><h2>Reading your<br><em style="color:var(--gold);font-style:italic">inspiration...</em></h2><p>AI is breaking down every detail of the look</p></div>
+  <div class="analysis-strip"><span id="analysisEmoji">👘</span><div class="scan-line"></div></div>
+  <div class="scroll">
+    <div class="step-list">
+      <div class="step-item" id="step0"><div class="step-icon wait"><i class="ti ti-eye"></i></div><div><div class="step-name">Garment Detection</div><div class="step-detail wait" id="sd0">Identifying clothing pieces...</div></div></div>
+      <div class="step-item" id="step1"><div class="step-icon wait"><i class="ti ti-palette"></i></div><div><div class="step-name">Colour & Fabric</div><div class="step-detail wait" id="sd1">Reading texture and material...</div></div></div>
+      <div class="step-item" id="step2"><div class="step-icon wait"><i class="ti ti-ruler-2"></i></div><div><div class="step-name">Silhouette Mapping</div><div class="step-detail wait" id="sd2">Measuring proportions & cut...</div></div></div>
+      <div class="step-item" id="step3"><div class="step-icon wait"><i class="ti ti-needle-thread"></i></div><div><div class="step-name">Construction Notes</div><div class="step-detail wait" id="sd3">Seams, lining & finish...</div></div></div>
+      <div class="step-item" id="step4"><div class="step-icon wait"><i class="ti ti-sparkles"></i></div><div><div class="step-name">Generating Brief</div><div class="step-detail wait" id="sd4">Compiling tailor instructions...</div></div></div>
+    </div>
+  </div>
+  <div class="analysis-progress"><div class="prog-bg"><div class="prog-fill" id="progFill"></div></div><div class="prog-label" id="progLabel">Preparing...</div></div>
+</div>
+
+<!-- BRIEF EDITOR -->
+<div class="screen" id="s-editor">
+  <div class="top-bar" style="padding-top:36px">
+    <button class="back-btn" onclick="go('stitch')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">Edit <em>Brief</em></div>
+    <div class="icon-btn" onclick="saveBrief()"><i class="ti ti-device-floppy"></i></div>
+  </div>
+  <div class="scroll" style="padding-bottom:4px">
+    <div class="brief-section">
+      <div class="bs-header"><div class="bs-title"><i class="ti ti-shirt"></i>Garment Details</div></div>
+      <div class="brief-field"><div class="bf-label">Garment Type</div><div class="bf-value" id="bf-garment">Anarkali Suit</div></div>
+      <div class="brief-field"><div class="bf-label">Style</div><div class="bf-tags"><div class="bf-tag">Floor-length</div><div class="bf-tag">Flared</div><div class="bf-tag">Fitted bodice</div></div></div>
+      <div class="brief-field" style="border:none"><div class="bf-label">Neckline</div><div class="bf-value" id="bf-neck">V-neck with keyhole detail</div></div>
+    </div>
+    <div class="brief-section">
+      <div class="bs-header"><div class="bs-title"><i class="ti ti-texture"></i>Fabric & Colour</div></div>
+      <div class="brief-field"><div class="bf-label">Primary Colour</div><div class="bf-value"><span style="display:inline-flex;align-items:center;gap:5px;background:var(--blush);color:var(--rose-d);padding:3px 10px;border-radius:20px;font-size:12px" id="bf-color">🎨 Deep Terracotta</span></div></div>
+      <div class="brief-field"><div class="bf-label">Fabric</div><div class="bf-tags" id="bf-fabrics"><div class="bf-tag">Georgette</div></div></div>
+      <div class="brief-field" style="border:none"><div class="bf-label">Quantity</div><div class="bf-value">Outer: 5.5m · Lining: 3m</div></div>
+    </div>
+    <div class="brief-section">
+      <div class="bs-header"><div class="bs-title"><i class="ti ti-ruler-2"></i>Measurements</div></div>
+      <div class="measure-grid">
+        <div class="measure-item"><div class="mi-label">Bust</div><div class="mi-value"><input id="m-bust" value="34 in"></div></div>
+        <div class="measure-item"><div class="mi-label">Waist</div><div class="mi-value"><input id="m-waist" value="28 in"></div></div>
+        <div class="measure-item"><div class="mi-label">Hip</div><div class="mi-value"><input id="m-hip" value="36 in"></div></div>
+        <div class="measure-item"><div class="mi-label">Length</div><div class="mi-value"><input id="m-length" value="52 in"></div></div>
+        <div class="measure-item"><div class="mi-label">Sleeve</div><div class="mi-value"><input id="m-sleeve" value="24 in"></div></div>
+        <div class="measure-item"><div class="mi-label">Shoulder</div><div class="mi-value"><input id="m-shoulder" value="14 in"></div></div>
+      </div>
+    </div>
+    <div class="brief-section">
+      <div class="bs-header"><div class="bs-title"><i class="ti ti-needle-thread"></i>Construction</div></div>
+      <div class="brief-field"><div class="bf-label">Sleeve Style</div><div class="bf-value" id="bf-sleeve">3/4 bell sleeve, raw-edge hem</div></div>
+      <div class="brief-field"><div class="bf-label">Embellishments</div><div class="bf-tags"><div class="bf-tag">Gold zari border</div><div class="bf-tag">Neck embroidery</div></div></div>
+      <div class="brief-field" style="border:none">
+        <div class="bf-label">AI Style Note</div>
+        <div style="background:var(--blush);border-radius:8px;padding:10px 12px;border-left:3px solid var(--rose);margin-top:4px">
+          <p style="font-size:11px;color:var(--noir);line-height:1.6" id="bf-ainote">✦ This silhouette suits your measurements. Request +1" ease at bust. Georgette stays cool in Rajkot's climate.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="brief-actions">
+    <button class="ba-btn" onclick="saveBrief()">Save Draft</button>
+    <button class="ba-btn gold" onclick="go('s-preview-brief')">Preview →</button>
+  </div>
+</div>
+
+<!-- PDF PREVIEW -->
+<div class="screen" id="s-preview-brief" style="background:#e8e4de">
+  <div class="top-bar" style="background:#e8e4de;border-bottom:0.5px solid rgba(100,80,60,.1);padding-top:36px">
+    <button class="back-btn" onclick="go('s-editor')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">Stitch <em>Brief</em></div>
+    <div></div>
+  </div>
+  <div class="pdf-frame">
+    <div class="pdf-header">
+      <div><div class="pdf-logo">Mir<em>é</em><span>Stitch Studio</span></div></div>
+      <div class="pdf-meta" id="pdfMeta">Brief #SS-2026-001<br>Today</div>
+    </div>
+    <div class="pdf-body">
+      <div class="pdf-doc-title" id="pdfTitle">Anarkali Suit</div>
+      <div class="pdf-subtitle">ETHNIC · FESTIVE · FLOOR LENGTH</div>
+      <div class="pdf-divider"></div>
+      <div class="pdf-section-title">GARMENT DETAILS</div>
+      <div class="pdf-row"><span class="pdf-key">Type</span><span class="pdf-val" id="pdfType">Anarkali Suit</span></div>
+      <div class="pdf-row"><span class="pdf-key">Silhouette</span><span class="pdf-val">A-line flared, fitted bodice</span></div>
+      <div class="pdf-row"><span class="pdf-key">Neckline</span><span class="pdf-val">V-neck with keyhole</span></div>
+      <div class="pdf-divider"></div>
+      <div class="pdf-section-title">FABRIC & COLOUR</div>
+      <div class="pdf-row"><span class="pdf-key">Colour</span><span class="pdf-val" id="pdfColor">Deep Terracotta</span></div>
+      <div class="pdf-row"><span class="pdf-key">Fabric</span><span class="pdf-val" id="pdfFabric">Georgette (outer)</span></div>
+      <div class="pdf-row"><span class="pdf-key">Outer</span><span class="pdf-val">5.5 metres</span></div>
+      <div class="pdf-row"><span class="pdf-key">Lining</span><span class="pdf-val">3 metres cotton</span></div>
+      <div class="pdf-divider"></div>
+      <div class="pdf-section-title">MEASUREMENTS</div>
+      <div class="pdf-measure-grid">
+        <div class="pdf-m"><div class="pdf-m-lbl">Bust</div><div class="pdf-m-val" id="pm-bust">34"</div></div>
+        <div class="pdf-m"><div class="pdf-m-lbl">Waist</div><div class="pdf-m-val" id="pm-waist">28"</div></div>
+        <div class="pdf-m"><div class="pdf-m-lbl">Hip</div><div class="pdf-m-val" id="pm-hip">36"</div></div>
+        <div class="pdf-m"><div class="pdf-m-lbl">Length</div><div class="pdf-m-val">52"</div></div>
+        <div class="pdf-m"><div class="pdf-m-lbl">Sleeve</div><div class="pdf-m-val">24"</div></div>
+        <div class="pdf-m"><div class="pdf-m-lbl">Shoulder</div><div class="pdf-m-val">14"</div></div>
+      </div>
+      <div class="pdf-divider"></div>
+      <div class="pdf-section-title">CONSTRUCTION</div>
+      <div class="pdf-row"><span class="pdf-key">Sleeves</span><span class="pdf-val">3/4 bell sleeve, raw hem</span></div>
+      <div class="pdf-row"><span class="pdf-key">Embellishments</span><span class="pdf-val">Gold zari border, neck embroidery</span></div>
+      <div class="pdf-row"><span class="pdf-key">Difficulty</span><span class="pdf-val">●●● Skilled tailor</span></div>
+      <div class="pdf-note-box"><p>Flare begins at natural waist. Use French seams for clean finish. Avoid over-pressing georgette.</p></div>
+      <div style="font-size:10px;color:var(--muted);text-align:center;padding-bottom:4px">Generated by Miré Stitch Studio</div>
+    </div>
+    <div class="pdf-footer"><div class="pdf-footer-note" id="pdfFooter">Miré Stitch Studio</div></div>
+  </div>
+  <div class="preview-actions">
+    <button class="pa-btn" onclick="go('s-sketch')"><i class="ti ti-brush"></i>Sketch</button>
+    <button class="pa-btn" onclick="showToast('Sharing...')"><i class="ti ti-share"></i>Share</button>
+    <button class="pa-btn gold" onclick="saveBrief();showToast('Brief saved ✓');go('s-briefs')"><i class="ti ti-download"></i>Save</button>
+  </div>
+</div>
+
+<!-- SKETCH -->
+<div class="screen" id="s-sketch">
+  <div class="sketch-topbar">
+    <button class="back-btn" onclick="go('s-preview-brief')" style="color:var(--cream)"><i class="ti ti-arrow-left"></i></button>
+    <div class="sketch-title">Design <em>Sketch</em></div>
+    <div class="icon-btn" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1);color:var(--cream)" onclick="showToast('Saved ✓')"><i class="ti ti-download"></i></div>
+  </div>
+  <div class="sketch-tabs">
+    <div class="sketch-tab on" onclick="switchSkTab(this,'st-main')">Sketch</div>
+    <div class="sketch-tab" onclick="switchSkTab(this,'st-flat')">Flat View</div>
+    <div class="sketch-tab" onclick="switchSkTab(this,'st-detail')">Details</div>
+  </div>
+  <!-- TAB: MAIN SKETCH -->
+  <div class="sketch-canvas-wrap" id="st-main">
+    <div class="sk-style-row">
+      <div class="sk-style on" onclick="selStyle(this)">✏️ Fashion Sketch</div>
+      <div class="sk-style" onclick="selStyle(this)">🎨 Watercolour</div>
+      <div class="sk-style" onclick="selStyle(this)">✒️ Line Art</div>
+      <div class="sk-style" onclick="selStyle(this)">📐 Technical</div>
+    </div>
+    <div class="sketch-frame" id="skFrame">
+      <div class="sketch-placeholder" id="skPh"><div style="font-size:48px">🪡</div><p>Tap <strong style="color:var(--gold)">Generate</strong> to create an AI fashion illustration</p></div>
+      <div class="sketch-generating" id="skGen"><div class="gen-ring"></div><div><div class="gen-name" id="genName">Reading brief...</div><div class="gen-step" id="genStep">Garment details</div></div></div>
+      <div class="sketch-result" id="skRes"><img id="skImg" style="width:100%;max-height:280px;object-fit:contain;border-radius:14px" alt="sketch"></div>
+    </div>
+    <div class="sketch-prompt-row">
+      <input class="sketch-prompt-input" id="skPrompt" value="Anarkali suit, deep terracotta georgette, floor length, V-neck, bell sleeves">
+      <button class="sketch-gen-btn" id="skBtn" onclick="generateSketch()"><i class="ti ti-wand" style="font-size:14px"></i>Generate</button>
+    </div>
+    <div class="sketch-actions" id="skActions" style="display:none">
+      <button class="sk-act-btn" onclick="generateSketch()"><i class="ti ti-refresh"></i>Again</button>
+      <button class="sk-act-btn gold" onclick="showToast('Added to brief ✓')"><i class="ti ti-check"></i>Add to Brief</button>
+    </div>
+  </div>
+  <!-- TAB: FLAT -->
+  <div class="sketch-canvas-wrap" id="st-flat" style="display:none">
+    <div class="sketch-frame" id="flatFrame" style="min-height:260px">
+      <div class="sketch-placeholder" id="flatPh"><div style="font-size:40px">👗</div><p>Generate a <strong style="color:var(--gold)">flat view</strong> technical drawing</p></div>
+      <div class="sketch-result" id="flatRes"><img id="flatImg" style="width:100%;max-height:260px;object-fit:contain;border-radius:14px" alt="flat view"></div>
+    </div>
+    <button class="sketch-gen-btn" id="flatBtn" style="width:100%;justify-content:center" onclick="generateFlat()"><i class="ti ti-wand" style="font-size:14px"></i>Generate Flat View</button>
+  </div>
+  <!-- TAB: DETAIL -->
+  <div class="sketch-canvas-wrap" id="st-detail" style="display:none">
+    <p style="font-size:10px;color:rgba(245,240,232,.35);letter-spacing:2px;text-transform:uppercase">Tap a detail to generate closeup</p>
+    <div class="detail-grid">
+      <div class="detail-tile" onclick="genDetail('neckline','dNeck')"><div class="detail-inner" id="dNeck"><div class="em">👗</div><div class="lbl">Neckline</div></div></div>
+      <div class="detail-tile" onclick="genDetail('sleeve','dSleeve')"><div class="detail-inner" id="dSleeve"><div class="em">🧣</div><div class="lbl">Sleeve</div></div></div>
+      <div class="detail-tile" onclick="genDetail('embroidery','dEmb')"><div class="detail-inner" id="dEmb"><div class="em">✨</div><div class="lbl">Embroidery</div></div></div>
+      <div class="detail-tile" onclick="genDetail('hem','dHem')"><div class="detail-inner" id="dHem"><div class="em">🪡</div><div class="lbl">Hem Detail</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MY BRIEFS -->
+<div class="screen" id="s-briefs">
+  <div class="top-bar" style="padding-top:36px">
+    <button class="back-btn" onclick="go('stitch')"><i class="ti ti-arrow-left"></i></button>
+    <div class="top-bar-title">My <em>Briefs</em></div>
+    <div></div>
+  </div>
+  <div class="scroll" style="padding-top:12px;padding-bottom:16px">
+    <button class="new-brief-btn" onclick="go('s-upload')"><i class="ti ti-plus"></i>Create New Brief</button>
+    <div class="sec-title">All Briefs</div>
+    <div class="briefs-list" id="briefsList"><div style="padding:20px;text-align:center;font-size:13px;color:var(--muted)">No briefs yet</div></div>
+  </div>
+</div>
+
+<!-- MODAL: NOTIFICATIONS -->
+<div class="modal-overlay" id="notifModal" onclick="if(event.target===this)closeModal('notifModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Notifications</div>
+    <div id="notifList"><div style="padding:12px;background:var(--card);border-radius:12px;text-align:center;font-size:13px;color:var(--muted)">No notifications yet</div></div>
+  </div>
+</div>
+
+<!-- MODAL: AR TRY-ON -->
+<div class="modal-overlay" id="arModal" onclick="if(event.target===this)closeModal('arModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Virtual Try-On ✦</div>
+    <div style="background:var(--noir);border-radius:16px;height:180px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:80px" id="arPerson">🧍‍♀️</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div style="flex:1;background:var(--card);border:0.5px solid var(--bdr);border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer" onclick="document.getElementById('arPerson').textContent='👗'"><div style="font-size:26px">👗</div><div style="font-size:9px;color:var(--muted);margin-top:4px">Dress</div></div>
+      <div style="flex:1;background:var(--card);border:0.5px solid var(--bdr);border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer" onclick="document.getElementById('arPerson').textContent='👡'"><div style="font-size:26px">👡</div><div style="font-size:9px;color:var(--muted);margin-top:4px">Shoes</div></div>
+      <div style="flex:1;background:var(--card);border:0.5px solid var(--bdr);border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer" onclick="document.getElementById('arPerson').textContent='👜'"><div style="font-size:26px">👜</div><div style="font-size:9px;color:var(--muted);margin-top:4px">Bag</div></div>
+    </div>
+    <button style="width:100%;padding:14px;background:var(--gold);color:var(--noir);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer" onclick="closeModal('arModal')">Done</button>
+  </div>
+</div>
+
+<!-- MODAL: PACK TRIP -->
+<div class="modal-overlay" id="packModal" onclick="if(event.target===this)closeModal('packModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Packing Assistant ✈️</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <div style="padding:8px 16px;border-radius:20px;font-size:12px;cursor:pointer;background:var(--noir);color:var(--cream);border:none;font-family:'DM Sans',sans-serif">Day 1</div>
+      <div style="padding:8px 16px;border-radius:20px;font-size:12px;cursor:pointer;border:0.5px solid var(--bdr);background:var(--card);color:var(--muted);font-family:'DM Sans',sans-serif">Day 2</div>
+      <div style="padding:8px 16px;border-radius:20px;font-size:12px;cursor:pointer;border:0.5px solid var(--bdr);background:var(--card);color:var(--muted);font-family:'DM Sans',sans-serif">Day 3</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:0.5px solid var(--bdr);border-radius:12px"><div style="font-size:22px">👗</div><div style="flex:1"><div style="font-size:13px;font-weight:500">Linen Dress</div><div style="font-size:11px;color:var(--muted)">Breathable for warm weather</div></div><i class="ti ti-check" style="color:var(--sage)"></i></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border:0.5px solid var(--bdr);border-radius:12px"><div style="font-size:22px">👟</div><div style="flex:1"><div style="font-size:13px;font-weight:500">White Sneakers</div><div style="font-size:11px;color:var(--muted)">Versatile, walks all day</div></div><i class="ti ti-check" style="color:var(--sage)"></i></div>
+    </div>
+    <button style="width:100%;margin-top:14px;padding:13px;background:var(--gold);color:var(--noir);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer" onclick="closeModal('packModal')">Save List</button>
+  </div>
+</div>
+
+<!-- MODAL: ITEM DETAIL -->
+<div class="modal-overlay" id="itemModal" onclick="if(event.target===this)closeModal('itemModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;font-size:56px;margin-bottom:8px" id="im-emoji">👗</div>
+    <div class="modal-title" id="im-name" style="text-align:center">Item</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div class="stat-c"><div class="stat-v" id="im-worn">0×</div><div class="stat-l">Worn</div></div>
+      <div class="stat-c"><div class="stat-v" id="im-cost">₹0</div><div class="stat-l">Cost</div></div>
+      <div class="stat-c"><div class="stat-v" id="im-cpw">N/A</div><div class="stat-l">/ Wear</div></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button style="flex:1;padding:11px;border-radius:10px;border:0.5px solid var(--bdr);background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--noir)" onclick="markWorn()">Mark Worn</button>
+      <button style="flex:1;padding:11px;border-radius:10px;background:var(--gold);color:var(--noir);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500" onclick="closeModal('itemModal');showModal('arModal')">Try On</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+</div><!-- end .phone -->
+
+<script>
+// ══════════════════════════════════════════════
+//  MIRÉ — COMPLETE APP JAVASCRIPT
+//  Same-origin: backend serves this file at localhost:4000
+//  Auto-detects prod URL after deploy
+// ══════════════════════════════════════════════
+
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? ''   // same-origin — no prefix needed
+  : 'https://mire-api.onrender.com'; // UPDATE after deploy
+
+// ── AUTH STORE ─────────────────────────────────
+const Auth = {
+  get token()   { return localStorage.getItem('mt'); },
+  get refresh() { return localStorage.getItem('mr'); },
+  get user()    { try { return JSON.parse(localStorage.getItem('mu') || 'null'); } catch { return null; } },
+  save(t, r, u) { localStorage.setItem('mt', t); localStorage.setItem('mr', r); localStorage.setItem('mu', JSON.stringify(u)); },
+  clear()       { ['mt','mr','mu'].forEach(k => localStorage.removeItem(k)); },
+  loggedIn()    { return !!this.token; },
+};
+
+// ── FETCH WRAPPER ──────────────────────────────
+async function api(path, opts = {}) {
+  const h = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (Auth.token) h['Authorization'] = 'Bearer ' + Auth.token;
+  let res = await fetch(API + path, { ...opts, headers: h });
+  if (res.status === 401 && Auth.refresh) {
+    const r2 = await fetch(API + '/api/auth/refresh', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: Auth.refresh }),
+    });
+    if (r2.ok) {
+      const { accessToken, refreshToken, user } = await r2.json();
+      Auth.save(accessToken, refreshToken, user);
+      h['Authorization'] = 'Bearer ' + accessToken;
+      res = await fetch(API + path, { ...opts, headers: h });
+    } else { Auth.clear(); go('splash'); throw new Error('Session expired'); }
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || data.errors?.[0]?.msg || 'Error ' + res.status);
+  return data;
+}
+
+async function apiUpload(path, formData) {
+  const h = {};
+  if (Auth.token) h['Authorization'] = 'Bearer ' + Auth.token;
+  const res = await fetch(API + path, { method: 'POST', headers: h, body: formData });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Upload failed');
+  return data;
+}
+
+// ── STATE ──────────────────────────────────────
+const S = {
+  wardrobe: [], briefs: [], chatSessionId: null,
+  inspo: { name: 'Anarkali', emoji: '👘', color: 'Deep Terracotta', fabric: 'Georgette' },
+  openItemId: null,
+};
+
+// ── EMOJI MAP ──────────────────────────────────
+const EMOJIS = { tops:'👔', bottoms:'👖', dresses:'👗', shoes:'👟', accessories:'👜', outerwear:'🧥' };
+const BRIEF_EMOJIS = { 'Anarkali':'👘','Co-ord Set':'👗','Blazer Dress':'🧥','Sharara Set':'🩱','Midi Dress':'👒','Palazzo Set':'🎀' };
+
+// ── NAVIGATION ─────────────────────────────────
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('active');
+  // Lazy-load data when entering screens
+  if (id === 'wardrobe') loadWardrobe();
+  if (id === 'profile')  loadProfile();
+  if (id === 's-briefs') loadBriefs();
+}
+
+function showToast(msg, dur = 2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showModal(id)  { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+
+// ── BOOT ───────────────────────────────────────
+async function boot() {
+  if (!Auth.loggedIn()) { go('splash'); return; }
+  go('home');
+  const u = Auth.user;
+  if (u) { setGreeting(u.name); fillProfileUI(u); }
+  // Non-blocking parallel load
+  loadWeather();
+  loadWardrobe();
+  loadOOTD();
+  loadNotifications();
+  loadBriefs();
+}
+
+function setGreeting(name) {
+  const h = new Date().getHours();
+  const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greetLine').textContent = g + ' ✦';
+  document.getElementById('greetName').textContent = 'Hey ' + (name?.split(' ')[0] || '') + '! What are you wearing?';
+}
+
+// ── AUTH ACTIONS ───────────────────────────────
+async function doSignup() {
+  const name  = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const pw    = document.getElementById('su-pw').value;
+  const city  = document.getElementById('su-city').value.trim();
+  const err   = document.getElementById('su-err');
+  err.classList.remove('show');
+
+  if (!name || !email || !pw) { err.textContent = 'Please fill all required fields.'; err.classList.add('show'); return; }
+  if (pw.length < 6)          { err.textContent = 'Password must be at least 6 characters.'; err.classList.add('show'); return; }
+
+  const btn = document.getElementById('su-btn');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  try {
+    const { user, accessToken, refreshToken } = await api('/api/auth/signup', {
+      method: 'POST', body: JSON.stringify({ name, email, password: pw, city: city || undefined }),
+    });
+    Auth.save(accessToken, refreshToken, user);
+    go('onboard');
+  } catch (e) { err.textContent = e.message; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Create Account';
+}
+
+async function doLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const pw    = document.getElementById('li-pw').value;
+  const err   = document.getElementById('li-err');
+  err.classList.remove('show');
+
+  if (!email || !pw) { err.textContent = 'Enter email and password.'; err.classList.add('show'); return; }
+
+  const btn = document.getElementById('li-btn');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    const { user, accessToken, refreshToken } = await api('/api/auth/login', {
+      method: 'POST', body: JSON.stringify({ email, password: pw }),
+    });
+    Auth.save(accessToken, refreshToken, user);
+    boot();
+  } catch (e) { err.textContent = e.message; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Sign In';
+}
+
+async function doLogout() {
+  try { await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: Auth.refresh }) }); } catch {}
+  Auth.clear(); go('splash'); showToast('Signed out');
+}
+
+// ── ONBOARDING ─────────────────────────────────
+function nextOb(n) {
+  document.querySelectorAll('.ob-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('ob' + n)?.classList.add('active');
+}
+
+async function finishOnboard() {
+  const chips = document.querySelectorAll('#ob1-opts .ob-chip.sel, #ob2-opts .ob-chip.sel');
+  const persona = Array.from(chips).map(c => c.textContent.trim().replace(/^\S+\s/, '')).slice(0, 5);
+  try { await api('/api/user/me', { method: 'PATCH', body: JSON.stringify({ stylePersona: persona }) }); } catch {}
+  boot();
+}
+
+// ── WEATHER ────────────────────────────────────
+async function loadWeather() {
+  try {
+    const city = Auth.user?.city || 'Rajkot';
+    const w = await api('/api/weather?city=' + encodeURIComponent(city));
+    document.getElementById('wCity').textContent  = (w.city || city) + ' · ' + (w.desc || 'Sunny');
+    document.getElementById('wTemp').textContent  = (w.temp || 34) + '°C';
+    document.getElementById('wTip').textContent   = w.advice || '☀️ Light outfits recommended';
+  } catch {}
+}
+
+// ── WARDROBE ───────────────────────────────────
+async function loadWardrobe(cat = 'all') {
+  try {
+    const q = cat && cat !== 'all' ? '?category=' + cat : '';
+    const { items, stats } = await api('/api/wardrobe' + q);
+    S.wardrobe = items;
+
+    // Stats — wardrobe screen
+    document.getElementById('wTotal').textContent  = stats.total;
+    document.getElementById('wUnworn').textContent = stats.unworn;
+    document.getElementById('wEco').textContent    = stats.ecoScore;
+    document.getElementById('wCpw').textContent    = '₹' + stats.costPerWear;
+
+    // Stats — home insights
+    document.getElementById('insightUnworn').textContent = stats.unworn + ' items unworn';
+    document.getElementById('insightEco').textContent    = 'Eco score: ' + stats.ecoScore;
+    document.getElementById('insightCpw').textContent    = '₹' + stats.costPerWear + '/wear';
+
+    renderGrid(items);
+    renderRecent(items);
+  } catch (e) { console.error('wardrobe:', e.message); }
+}
+
+function renderGrid(items) {
+  const g = document.getElementById('wardrobeGrid');
+  if (!g) return;
+  if (!items.length) {
+    g.innerHTML = '<div class="add-tile" onclick="go(\'addItem\')"><i class="ti ti-plus"></i><span>Add first item</span></div>';
+    return;
+  }
+  g.innerHTML = items.map(i => {
+    const em    = EMOJIS[i.category] || '👗';
+    const badge = i.wornCount === 0 ? 'NEW' : i.wornCount >= 8 ? 'FAV' : i.wornCount + '×';
+    const bcls  = i.wornCount >= 8 ? 'worn-badge hot' : 'worn-badge';
+    const img   = i.imageUrl
+      ? `<img class="wgi-img" src="${i.imageUrl}" loading="lazy" onerror="this.style.display='none'">`
+      : `<div class="wgi-em">${em}</div>`;
+    return `<div class="wgi" onclick="openItem('${i.id}')">
+      ${img}
+      <div class="wgi-name">${i.name}</div>
+      <div class="wgi-sub">${i.color || i.category}</div>
+      <div class="${bcls}">${badge}</div>
+    </div>`;
+  }).join('') + '<div class="add-tile" onclick="go(\'addItem\')"><i class="ti ti-plus"></i><span>Add Item</span></div>';
+}
+
+function renderRecent(items) {
+  const el = document.getElementById('recentWardrobe');
+  if (!el) return;
+  if (!items.length) {
+    el.innerHTML = '<div class="mwi"><div class="mwi-em">👗</div><div class="mwi-name">Add items</div><div class="mwi-worn">to start</div></div>';
+    return;
+  }
+  el.innerHTML = items.slice(0, 6).map(i => `
+    <div class="mwi" onclick="openItem('${i.id}')">
+      <div class="mwi-em">${i.imageUrl ? `<img src="${i.imageUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" loading="lazy">` : EMOJIS[i.category] || '👗'}</div>
+      <div class="mwi-name">${i.name}</div>
+      <div class="mwi-worn">Worn ${i.wornCount}×</div>
+    </div>`).join('');
+}
+
+function filterW(el, cat) {
+  document.querySelectorAll('.ftag').forEach(f => f.classList.remove('on'));
+  el.classList.add('on');
+  loadWardrobe(cat);
+}
+
+function openItem(id) {
+  const item = S.wardrobe.find(i => i.id === id);
+  if (!item) return;
+  S.openItemId = id;
+  document.getElementById('im-emoji').textContent = EMOJIS[item.category] || '👗';
+  document.getElementById('im-name').textContent  = item.name;
+  document.getElementById('im-worn').textContent  = item.wornCount + '×';
+  document.getElementById('im-cost').textContent  = '₹' + (item.purchasePrice || 0).toLocaleString('en-IN');
+  const cpw = item.wornCount > 0 && item.purchasePrice ? Math.round(item.purchasePrice / item.wornCount) : 0;
+  document.getElementById('im-cpw').textContent   = cpw > 0 ? '₹' + cpw : 'N/A';
+  showModal('itemModal');
+}
+
+async function markWorn() {
+  if (!S.openItemId) return;
+  try {
+    await api('/api/wardrobe/' + S.openItemId + '/worn', { method: 'PATCH' });
+    showToast('Marked as worn ✓'); closeModal('itemModal'); loadWardrobe();
+  } catch (e) { showToast(e.message); }
+}
+
+// ── ADD ITEM ───────────────────────────────────
+function previewImg(input) {
+  if (!input.files?.[0]) return;
+  const r = new FileReader();
+  r.onload = e => {
+    const img = document.getElementById('imgPreview');
+    img.src = e.target.result; img.style.display = 'block';
+    document.getElementById('imgInner').style.display = 'none';
+  };
+  r.readAsDataURL(input.files[0]);
+}
+
+async function submitAdd() {
+  const name = document.getElementById('i-name').value.trim();
+  const cat  = document.getElementById('i-cat').value;
+  const err  = document.getElementById('add-err');
+  err.classList.remove('show');
+
+  if (!name || !cat) { err.textContent = 'Name and category are required.'; err.classList.add('show'); return; }
+
+  const btn = document.getElementById('addItemBtn');
+  btn.disabled = true; btn.textContent = 'Adding...';
+  try {
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('category', cat);
+    const color  = document.getElementById('i-color').value.trim();
+    const fabric = document.getElementById('i-fabric').value.trim();
+    const brand  = document.getElementById('i-brand').value.trim();
+    const price  = document.getElementById('i-price').value;
+    if (color)  fd.append('color', color);
+    if (fabric) fd.append('fabric', fabric);
+    if (brand)  fd.append('brand', brand);
+    if (price)  fd.append('purchasePrice', price);
+
+    const season = Array.from(document.querySelectorAll('#season-chips .ob-chip.sel')).map(c => c.textContent.toLowerCase());
+    const occ    = Array.from(document.querySelectorAll('#occ-chips .ob-chip.sel')).map(c => c.textContent.toLowerCase());
+    fd.append('season', JSON.stringify(season));
+    fd.append('occasions', JSON.stringify(occ));
+
+    const file = document.getElementById('itemImg').files[0];
+    if (file) fd.append('image', file);
+
+    await apiUpload('/api/wardrobe', fd);
+
+    showToast('Item added ✓');
+    // Reset form
+    ['i-name','i-color','i-fabric','i-brand','i-price'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('i-cat').value = '';
+    document.getElementById('imgPreview').style.display = 'none';
+    document.getElementById('imgInner').style.display = 'block';
+    document.querySelectorAll('#addItem .ob-chip.sel').forEach(c => c.classList.remove('sel'));
+    go('wardrobe'); loadWardrobe();
+  } catch (e) { err.textContent = e.message; err.classList.add('show'); }
+  btn.disabled = false; btn.textContent = 'Add to Wardrobe';
+}
+
+// ── OOTD ───────────────────────────────────────
+async function loadOOTD() {
+  try {
+    const { message, outfit } = await api('/api/stylist/ootd', { method: 'POST' });
+    if (outfit?.pieces?.length) {
+      document.getElementById('ootdTitle').textContent = outfit.title || "Today's Look";
+      document.getElementById('ootdSub').textContent   = message?.slice(0, 70) + (message?.length > 70 ? '...' : '');
+      document.getElementById('ootdPieces').innerHTML  = outfit.pieces.map(p =>
+        `<div class="ootd-piece">${p.em}<div class="ootd-piece-lbl">${p.lbl}</div></div>`
+      ).join('');
+    } else {
+      document.getElementById('ootdTitle').textContent = 'Add wardrobe items';
+      document.getElementById('ootdSub').textContent   = message || 'for AI outfit suggestions';
+      document.getElementById('ootdPieces').innerHTML  = '<div class="ootd-piece">👗<div class="ootd-piece-lbl">No items</div></div>';
+    }
+  } catch {
+    document.getElementById('ootdTitle').textContent = 'AI Stylist Ready';
+    document.getElementById('ootdSub').textContent   = 'Add ANTHROPIC_API_KEY to .env';
+  }
+}
+
+// ── NOTIFICATIONS ──────────────────────────────
+async function loadNotifications() {
+  try {
+    const { notifications, unreadCount } = await api('/api/notifications');
+    const dot = document.getElementById('notifDot');
+    if (dot) dot.style.display = unreadCount > 0 ? 'block' : 'none';
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    if (!notifications.length) {
+      list.innerHTML = '<div style="padding:12px;background:var(--card);border-radius:12px;text-align:center;font-size:13px;color:var(--muted)">No notifications yet</div>';
+      return;
+    }
+    list.innerHTML = notifications.slice(0, 8).map(n => `
+      <div style="padding:12px;background:var(--card);border-radius:12px;border:0.5px solid var(--bdr);opacity:${n.isRead ? '.55' : '1'};cursor:pointer;margin-bottom:8px"
+        onclick="api('/api/notifications/${n.id}/read',{method:'PATCH'}).then(()=>loadNotifications())">
+        <div style="font-size:13px;font-weight:500;color:var(--noir)">${n.title}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${n.body}</div>
+      </div>`).join('');
+  } catch {}
+}
+
+// ── PROFILE ────────────────────────────────────
+async function loadProfile() {
+  try {
+    const { user } = await api('/api/user/me');
+    Auth.save(Auth.token, Auth.refresh, user);
+    fillProfileUI(user);
+    if (user._count) {
+      document.getElementById('briefCountTxt').textContent = user._count.stitchBriefs + ' briefs created';
+      const cost = S.wardrobe.reduce((s, i) => s + (i.purchasePrice || 0), 0);
+      document.getElementById('spendTxt').textContent = '₹' + cost.toLocaleString('en-IN') + ' tracked';
+    }
+  } catch {}
+}
+
+function fillProfileUI(user) {
+  if (!user) return;
+  document.getElementById('profName').textContent  = user.name || '';
+  document.getElementById('profStyle').textContent = (user.stylePersona || []).join(', ') || 'Fashion Enthusiast';
+  const dna = document.getElementById('profDNA');
+  if (dna && user.stylePersona?.length) {
+    dna.innerHTML = user.stylePersona.slice(0, 5).map((s, i) =>
+      `<div class="dt ${i % 2 ? 'lt' : ''}">${s}</div>`
+    ).join('');
+  }
+  const wItems = S.wardrobe;
+  if (wItems.length) {
+    const worn = wItems.reduce((s, i) => s + i.wornCount, 0);
+    const avg  = worn / wItems.length;
+    const score = avg > 10 ? 'A' : avg > 5 ? 'B' : 'C';
+    document.getElementById('ecoRing').textContent = score;
+    document.getElementById('ecoText').textContent = wItems.filter(i => i.wornCount === 0).length + ' unworn items';
+  }
+}
+
+// ── AI CHAT ────────────────────────────────────
+function clearChat() {
+  S.chatSessionId = null;
+  document.getElementById('chatArea').innerHTML = `
+    <div><div class="ai-label">Miré AI</div>
+    <div class="msg ai">Hello! I'm your personal style assistant. Tell me about your plans or ask me anything about fashion. ✨</div></div>`;
+}
+
+function sendQuick(text) { document.getElementById('chatInput').value = text; sendMsg(); }
+
+async function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const btn   = document.getElementById('sendBtn');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = ''; input.disabled = true; btn.disabled = true;
+
+  const area = document.getElementById('chatArea');
+  area.innerHTML += `<div style="display:flex;justify-content:flex-end"><div class="msg user">${text}</div></div>`;
+
+  const typing = document.createElement('div');
+  typing.innerHTML = `<div class="ai-label">Miré AI</div><div class="msg ai"><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+  area.appendChild(typing); area.scrollTop = area.scrollHeight;
+
+  try {
+    const { message, outfitData, sessionId } = await api('/api/stylist/chat', {
+      method: 'POST', body: JSON.stringify({ message: text, sessionId: S.chatSessionId }),
+    });
+    S.chatSessionId = sessionId; typing.remove();
+
+    let html = `<div><div class="ai-label">Miré AI</div><div class="msg ai">${message.replace(/\n/g, '<br>')}</div></div>`;
+    if (outfitData?.pieces) {
+      const pieces = outfitData.pieces.map(p => `<div class="op"><div class="op-em">${p.em}</div><div class="op-lbl">${p.lbl}</div></div>`).join('');
+      html += `<div class="outfit-card">
+        <div class="outfit-card-lbl">✦ ${outfitData.title || 'Curated Look'}</div>
+        <div class="outfit-pieces">${pieces}</div>
+        <div class="outfit-actions">
+          <button class="oa-btn" onclick="this.textContent='Remixing...'">🔀 Remix</button>
+          <button class="oa-btn dark" onclick="this.textContent='Saved ✓'">Save Look</button>
+        </div>
+      </div>`;
+    }
+    area.innerHTML += html;
+  } catch (e) {
+    typing.remove();
+    const msg = e.message.includes('not configured')
+      ? 'Add ANTHROPIC_API_KEY to backend/.env and restart the server to enable AI chat!'
+      : 'Error: ' + e.message;
+    area.innerHTML += `<div><div class="ai-label">Miré AI</div><div class="msg ai">${msg}</div></div>`;
+  }
+
+  area.scrollTop = area.scrollHeight;
+  input.disabled = false; btn.disabled = false; input.focus();
+}
+
+// ── STITCH STUDIO ──────────────────────────────
+function loadInspo(name, emoji, color, fabric) {
+  S.inspo = { name, emoji, color, fabric };
+  document.getElementById('analysisEmoji').textContent = emoji;
+  document.getElementById('bf-garment').textContent   = name;
+  document.getElementById('bf-color').textContent     = '🎨 ' + color;
+  document.getElementById('bf-fabrics').innerHTML     = `<div class="bf-tag">${fabric}</div>`;
+  document.getElementById('bf-ainote').textContent    = `✦ This ${name.toLowerCase()} suits your measurements. Request +1" ease at bust. ${fabric} fabric is perfect for Rajkot's climate.`;
+  document.getElementById('pdfTitle').textContent     = name;
+  document.getElementById('pdfType').textContent      = name;
+  document.getElementById('pdfColor').textContent     = color;
+  document.getElementById('pdfFabric').textContent    = fabric + ' (outer)';
+  document.getElementById('skPrompt').value           = `${name.toLowerCase()}, ${color.toLowerCase()} ${fabric.toLowerCase()}, floor length, V-neck`;
+
+  // Fill user measurements in PDF
+  const u = Auth.user;
+  if (u) {
+    if (u.bust)  { document.getElementById('pm-bust').textContent  = u.bust + '"'; document.getElementById('m-bust').value  = u.bust + ' in'; }
+    if (u.waist) { document.getElementById('pm-waist').textContent = u.waist + '"'; document.getElementById('m-waist').value = u.waist + ' in'; }
+    if (u.hip)   { document.getElementById('pm-hip').textContent   = u.hip + '"'; document.getElementById('m-hip').value   = u.hip + ' in'; }
+    document.getElementById('pdfMeta').innerHTML = `Brief #SS-${new Date().getFullYear()}-001<br>${new Date().toLocaleDateString('en-IN')}<br>${u.name}`;
+    document.getElementById('pdfFooter').textContent = u.name + ' · Miré Stitch Studio';
+  }
+  go('s-analysis'); runAnalysis();
+}
+
+function handleStitchFile(input) {
+  if (!input.files?.[0]) return;
+  const r = new FileReader();
+  r.onload = e => {
+    document.getElementById('uploadPreview').src = e.target.result;
+    document.getElementById('uploadPreview').style.display = 'block';
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+  };
+  r.readAsDataURL(input.files[0]);
+}
+
+function startAnalysis() { go('s-analysis'); S.inspo = { name: 'Custom', emoji: '🪡', color: 'Custom', fabric: 'Custom' }; document.getElementById('analysisEmoji').textContent = '🪡'; runAnalysis(); }
+
+function runAnalysis() {
+  for (let i = 0; i < 5; i++) {
+    document.getElementById('step' + i).querySelector('.step-icon').className = 'step-icon wait';
+    document.getElementById('sd' + i).className = 'step-detail wait';
+  }
+  document.getElementById('progFill').style.width = '0%';
+
+  const steps = [
+    { done: 'Garment detected · ' + S.inspo.name, pct: 20 },
+    { done: S.inspo.color + ' · ' + S.inspo.fabric + ' identified', pct: 40 },
+    { done: 'A-line silhouette · Floor length', pct: 60 },
+    { done: 'Bell sleeves · Embroidery noted', pct: 80 },
+    { done: 'Stitch brief generated ✓', pct: 100 },
+  ];
+  const icons = ['ti-eye','ti-palette','ti-ruler-2','ti-needle-thread','ti-sparkles'];
+  const delays = [900, 1900, 2900, 3900, 5100];
+
+  steps.forEach((s, i) => {
+    setTimeout(() => {
+      const el = document.getElementById('step' + i);
+      el.querySelector('.step-icon').className = 'step-icon active';
+      el.querySelector('.step-icon').innerHTML = `<i class="ti ${icons[i]}"></i>`;
+      document.getElementById('sd' + i).className = 'step-detail active';
+      document.getElementById('sd' + i).textContent = 'Processing...';
+    }, delays[i] - 700);
+
+    setTimeout(() => {
+      const el = document.getElementById('step' + i);
+      el.querySelector('.step-icon').className = 'step-icon done';
+      el.querySelector('.step-icon').innerHTML = '<i class="ti ti-check"></i>';
+      document.getElementById('sd' + i).className = 'step-detail done';
+      document.getElementById('sd' + i).textContent = s.done;
+      document.getElementById('progFill').style.width = s.pct + '%';
+      document.getElementById('progLabel').textContent = i < 4 ? 'Analysing...' : 'Brief ready!';
+      if (i === 4) setTimeout(() => go('s-editor'), 700);
+    }, delays[i]);
+  });
+}
+
+async function saveBrief() {
+  try {
+    await api('/api/stitch/briefs', { method: 'POST', body: JSON.stringify({
+      title: S.inspo.name || 'My Brief',
+      garmentType: S.inspo.name,
+      primaryColor: S.inspo.color,
+      fabric: [S.inspo.fabric],
+      difficulty: 'skilled',
+    })});
+    showToast('Brief saved ✓'); loadBriefs();
+  } catch (e) { showToast(e.message); }
+}
+
+async function loadBriefs() {
+  try {
+    const { briefs } = await api('/api/stitch/briefs');
+    S.briefs = briefs;
+    renderBriefsList(briefs);
+    renderRecentBriefs(briefs);
+  } catch {}
+}
+
+function renderBriefsList(briefs) {
+  const el = document.getElementById('briefsList');
+  if (!el) return;
+  if (!briefs.length) { el.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:var(--muted)">No briefs yet — create one above</div>'; return; }
+  el.innerHTML = briefs.map(b => `
+    <div class="brief-card" onclick="go('s-preview-brief')">
+      <div class="brief-card-left">${BRIEF_EMOJIS[b.title] || '👗'}</div>
+      <div class="brief-card-body">
+        <div class="bc-name">${b.title}</div>
+        <div class="bc-type">${b.primaryColor || ''} · ${(b.fabric || []).join(', ') || 'Custom'}</div>
+        <div class="bc-meta">
+          <div class="bc-date">${new Date(b.createdAt).toLocaleDateString('en-IN')}</div>
+          <div class="bc-status ${b.status === 'ready' ? 'ready' : 'draft'}">${b.status === 'ready' ? '✓ Ready' : 'Draft'}</div>
+        </div>
+      </div>
+      <div class="brief-card-arrow"><i class="ti ti-chevron-right"></i></div>
+    </div>`).join('');
+}
+
+function renderRecentBriefs(briefs) {
+  const el = document.getElementById('recentBriefs');
+  if (!el) return;
+  if (!briefs.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No briefs yet</div>'; return; }
+  el.innerHTML = briefs.slice(0, 3).map(b => `
+    <div class="brief-mini" onclick="go('s-preview-brief')">
+      <div class="brief-mini-top">${BRIEF_EMOJIS[b.title] || '👗'}</div>
+      <div class="brief-mini-info">
+        <div class="brief-mini-name">${b.title}</div>
+        <div class="brief-mini-date">${new Date(b.createdAt).toLocaleDateString('en-IN')}</div>
+        <div class="brief-badge ${b.status === 'ready' ? 'badge-ready' : 'badge-draft'}">${b.status === 'ready' ? '✓ Ready' : 'Draft'}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ── SKETCH GENERATION ──────────────────────────
+const STYLE_MAP = { '✏️ Fashion Sketch': 'fashion-sketch', '🎨 Watercolour': 'watercolour', '✒️ Line Art': 'line-art', '📐 Technical': 'technical' };
+
+function switchSkTab(el, id) {
+  document.querySelectorAll('.sketch-tab').forEach(t => t.classList.remove('on')); el.classList.add('on');
+  ['st-main','st-flat','st-detail'].forEach(sid => {
+    const e = document.getElementById(sid);
+    if (e) e.style.display = sid === id ? 'flex' : 'none';
+  });
+}
+
+function selStyle(el) { document.querySelectorAll('.sk-style').forEach(s => s.classList.remove('on')); el.classList.add('on'); }
+
+async function generateSketch() {
+  const btn = document.getElementById('skBtn');
+  const gen = document.getElementById('skGen');
+  const res = document.getElementById('skRes');
+  const ph  = document.getElementById('skPh');
+  const act = document.getElementById('skActions');
+  btn.disabled = true; ph.style.display = 'none'; res.classList.remove('show'); gen.classList.add('show');
+
+  const steps = [['Reading brief...','Garment & silhouette'],['Building prompt...','Colour & fabric'],['Sending to AI...','Pollinations.ai'],['Rendering sketch...','Fashion illustration']];
+  let si = 0;
+  const iv = setInterval(() => { if (si < steps.length) { document.getElementById('genName').textContent = steps[si][0]; document.getElementById('genStep').textContent = steps[si][1]; si++; } }, 800);
+
+  const prompt = document.getElementById('skPrompt').value;
+  const styleEl = document.querySelector('.sk-style.on');
+  const style = STYLE_MAP[styleEl?.textContent?.trim()] || 'fashion-sketch';
+
+  try {
+    const { imageUrl } = await api('/api/sketch/generate', { method: 'POST', body: JSON.stringify({ prompt, style }) });
+    clearInterval(iv);
+    const img = document.getElementById('skImg');
+    img.onload = () => { gen.classList.remove('show'); res.classList.add('show'); act.style.display = 'flex'; btn.disabled = false; showToast('Sketch generated ✓'); };
+    img.onerror = () => { gen.classList.remove('show'); res.classList.add('show'); act.style.display = 'flex'; btn.disabled = false; };
+    img.src = imageUrl;
+    setTimeout(() => { if (gen.classList.contains('show')) { clearInterval(iv); gen.classList.remove('show'); res.classList.add('show'); act.style.display = 'flex'; btn.disabled = false; } }, 20000);
+  } catch (e) {
+    clearInterval(iv); gen.classList.remove('show'); ph.style.display = 'flex'; ph.querySelector('p').textContent = 'Error: ' + e.message; btn.disabled = false;
+  }
+}
+
+async function generateFlat() {
+  const btn = document.getElementById('flatBtn');
+  const ph  = document.getElementById('flatPh');
+  const res = document.getElementById('flatRes');
+  btn.disabled = true; btn.innerHTML = '<div style="width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(201,168,76,.3);border-top-color:var(--gold);animation:spin 1s linear infinite;display:inline-block"></div> Generating...';
+  ph.style.display = 'none';
+  try {
+    const prompt = document.getElementById('skPrompt').value + ' front view technical flat, no mannequin';
+    const { imageUrl } = await api('/api/sketch/generate', { method: 'POST', body: JSON.stringify({ prompt, style: 'flat-view' }) });
+    const img = document.getElementById('flatImg');
+    img.onload = () => { res.classList.add('show'); btn.innerHTML = '<i class="ti ti-refresh" style="font-size:14px"></i> Regenerate'; btn.disabled = false; };
+    img.onerror = () => { ph.style.display = 'flex'; btn.innerHTML = '<i class="ti ti-wand" style="font-size:14px"></i> Try Again'; btn.disabled = false; };
+    img.src = imageUrl;
+    setTimeout(() => { if (!res.classList.contains('show')) { ph.style.display = 'flex'; btn.innerHTML = '<i class="ti ti-wand"></i> Generate Flat View'; btn.disabled = false; } }, 20000);
+  } catch (e) { ph.style.display = 'flex'; btn.innerHTML = '<i class="ti ti-wand"></i> Generate Flat View'; btn.disabled = false; }
+}
+
+async function genDetail(type, elId) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:24px;height:24px;border-radius:50%;border:1.5px solid rgba(201,168,76,.3);border-top-color:var(--gold);animation:spin 1s linear infinite"></div><div style="font-size:9px;color:rgba(245,240,232,.3);letter-spacing:1px">Generating...</div></div>';
+  const names = { neckline:'neckline closeup detail', sleeve:'sleeve detail', embroidery:'embroidery gold detail', hem:'hem mirror work detail' };
+  try {
+    const prompt = document.getElementById('skPrompt').value + ', ' + (names[type] || type);
+    const { imageUrl } = await api('/api/sketch/generate', { method: 'POST', body: JSON.stringify({ prompt, style: 'detail', w: 300, h: 300 }) });
+    const img = new Image();
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:10px;';
+    img.onload = () => { el.innerHTML = ''; el.appendChild(img); showToast(type + ' detail ready ✓'); };
+    img.onerror = () => { el.innerHTML = `<div class="detail-inner"><div class="em">🎨</div><div class="lbl">${type}</div></div>`; };
+    img.src = imageUrl;
+    setTimeout(() => { if (el.querySelector('[style*="spin"]')) el.innerHTML = `<div class="detail-inner"><div class="em">🎨</div><div class="lbl">${type}</div></div>`; }, 18000);
+  } catch { el.innerHTML = `<div class="detail-inner"><div class="em">🎨</div><div class="lbl">${type}</div></div>`; }
+}
+
+// ── INIT ───────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('li-pw')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('su-pw')?.addEventListener('keydown', e => { if (e.key === 'Enter') doSignup(); });
+  boot();
+});
+</script>
+</body>
+</html>

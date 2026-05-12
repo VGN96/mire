@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  city          String?
+  stylePersona  String[]
+  occasions     String[]
+  budgetRange   String?
+  skinTone      String?
+  bust          Float?
+  waist         Float?
+  hip           Float?
+  height        Float?
+  shoulder      Float?
+  sleeveLength  Float?
+  ootdReminder  Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  wardrobeItems WardrobeItem[]
+  outfits       Outfit[]
+  stitchBriefs  StitchBrief[]
+  chatSessions  ChatSession[]
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@map("refresh_tokens")
+}
+
+model WardrobeItem {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  category      String
+  color         String?
+  fabric        String?
+  season        String[]
+  occasions     String[]
+  brand         String?
+  purchasePrice Float?
+  imageUrl      String?
+  imagePublicId String?
+  wornCount     Int       @default(0)
+  lastWornAt    DateTime?
+  isActive      Boolean   @default(true)
+  aiTags        String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  outfitItems   OutfitItem[]
+  @@map("wardrobe_items")
+}
+
+model Outfit {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  occasion      String?
+  isAiGenerated Boolean   @default(false)
+  wornCount     Int       @default(0)
+  lastWornAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  items         OutfitItem[]
+  @@map("outfits")
+}
+
+model OutfitItem {
+  id             String       @id @default(uuid())
+  outfitId       String
+  outfit         Outfit       @relation(fields: [outfitId], references: [id], onDelete: Cascade)
+  wardrobeItemId String
+  wardrobeItem   WardrobeItem @relation(fields: [wardrobeItemId], references: [id])
+  position       Int
+  @@map("outfit_items")
+}
+
+model StitchBrief {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  briefNumber         String   @unique
+  title               String
+  status              String   @default("draft")
+  garmentType         String?
+  styleNotes          String[]
+  neckline            String?
+  sleeveStyle         String?
+  silhouette          String?
+  primaryColor        String?
+  fabric              String[]
+  outerFabricMetres   Float?
+  liningMetres        Float?
+  embellishments      String[]
+  bust                Float?
+  waist               Float?
+  hip                 Float?
+  briefLength         Float?
+  sleeve              Float?
+  shoulder            Float?
+  difficulty          String?
+  constructionNotes   String?
+  aiStyleNote         String?
+  sketchUrls          String[]
+  flatViewUrls        String[]
+  annotatedSketchUrl  String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  @@map("stitch_briefs")
+}
+
+model ChatSession {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id         String      @id @default(uuid())
+  sessionId  String
+  session    ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role       String
+  content    String
+  outfitData Json?
+  createdAt  DateTime    @default(now())
+  @@map("chat_messages")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+  @@map("notifications")
+}
