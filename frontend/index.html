@@ -593,6 +593,7 @@ html,body{height:100%;background:#1a1410;display:flex;align-items:center;justify
             <option value="tops">Tops</option>
             <option value="bottoms">Bottoms</option>
             <option value="dresses">Dresses</option>
+            <option value="ethnic">Ethnic</option>
             <option value="shoes">Shoes</option>
             <option value="accessories">Accessories</option>
             <option value="outerwear">Outerwear</option>
@@ -1030,9 +1031,21 @@ async function api(path, opts = {}) {
 async function apiUpload(path, formData) {
   const h = {};
   if (Auth.token) h['Authorization'] = 'Bearer ' + Auth.token;
-  const res = await fetch(API + path, { method: 'POST', headers: h, body: formData });
+  let res = await fetch(API + path, { method: 'POST', headers: h, body: formData });
+  if (res.status === 401 && Auth.refresh) {
+    const r2 = await fetch(API + '/api/auth/refresh', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: Auth.refresh }),
+    });
+    if (r2.ok) {
+      const { accessToken, refreshToken, user } = await r2.json();
+      Auth.save(accessToken, refreshToken, user);
+      h['Authorization'] = 'Bearer ' + accessToken;
+      res = await fetch(API + path, { method: 'POST', headers: h, body: formData });
+    } else { Auth.clear(); go('splash'); throw new Error('Session expired'); }
+  }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Upload failed');
+  if (!res.ok) throw new Error(data.error || data.errors?.[0]?.msg || 'Upload failed');
   return data;
 }
 
@@ -1041,6 +1054,7 @@ const S = {
   wardrobe: [], briefs: [], chatSessionId: null,
   inspo: { name: 'Anarkali', emoji: '👘', color: 'Deep Terracotta', fabric: 'Georgette' },
   openItemId: null,
+  activeBriefId: null,
 };
 
 // ── EMOJI MAP ──────────────────────────────────
@@ -1440,6 +1454,7 @@ async function sendMsg() {
 
 // ── STITCH STUDIO ──────────────────────────────
 function loadInspo(name, emoji, color, fabric) {
+  S.activeBriefId = null;
   S.inspo = { name, emoji, color, fabric };
   document.getElementById('analysisEmoji').textContent = emoji;
   document.getElementById('bf-garment').textContent   = name;
@@ -1475,7 +1490,7 @@ function handleStitchFile(input) {
   r.readAsDataURL(input.files[0]);
 }
 
-function startAnalysis() { go('s-analysis'); S.inspo = { name: 'Custom', emoji: '🪡', color: 'Custom', fabric: 'Custom' }; document.getElementById('analysisEmoji').textContent = '🪡'; runAnalysis(); }
+function startAnalysis() { S.activeBriefId = null; go('s-analysis'); S.inspo = { name: 'Custom', emoji: '🪡', color: 'Custom', fabric: 'Custom' }; document.getElementById('analysisEmoji').textContent = '🪡'; runAnalysis(); }
 
 function runAnalysis() {
   for (let i = 0; i < 5; i++) {
@@ -1518,13 +1533,25 @@ function runAnalysis() {
 
 async function saveBrief() {
   try {
-    await api('/api/stitch/briefs', { method: 'POST', body: JSON.stringify({
+    const payload = {
       title: S.inspo.name || 'My Brief',
       garmentType: S.inspo.name,
       primaryColor: S.inspo.color,
       fabric: [S.inspo.fabric],
       difficulty: 'skilled',
-    })});
+      bust: parseFloat(document.getElementById('m-bust')?.value) || undefined,
+      waist: parseFloat(document.getElementById('m-waist')?.value) || undefined,
+      hip: parseFloat(document.getElementById('m-hip')?.value) || undefined,
+      briefLength: parseFloat(document.getElementById('m-length')?.value) || undefined,
+      sleeve: parseFloat(document.getElementById('m-sleeve')?.value) || undefined,
+      shoulder: parseFloat(document.getElementById('m-shoulder')?.value) || undefined,
+    };
+    if (S.activeBriefId) {
+      await api(`/api/stitch/briefs/${S.activeBriefId}`, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+      const { brief } = await api('/api/stitch/briefs', { method: 'POST', body: JSON.stringify(payload) });
+      S.activeBriefId = brief.id;
+    }
     showToast('Brief saved ✓'); loadBriefs();
   } catch (e) { showToast(e.message); }
 }
@@ -1538,12 +1565,48 @@ async function loadBriefs() {
   } catch {}
 }
 
+function openBrief(id) {
+  const b = S.briefs.find(x => x.id === id);
+  if (!b) return;
+  S.activeBriefId = b.id;
+  S.inspo = { name: b.title || b.garmentType || 'My Brief', emoji: BRIEF_EMOJIS[b.title] || '👗', color: b.primaryColor || '', fabric: (b.fabric || [])[0] || '' };
+
+  // Populate editor fields
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  set('bf-garment', b.garmentType || b.title || '');
+  set('bf-neck', b.neckline || '');
+  set('bf-color', '🎨 ' + (b.primaryColor || ''));
+  document.getElementById('bf-fabrics').innerHTML = (b.fabric || []).map(f => `<div class="bf-tag">${f}</div>`).join('') || '';
+  set('bf-sleeve', b.sleeveStyle || '');
+  set('bf-ainote', b.aiStyleNote ? '✦ ' + b.aiStyleNote : '');
+  setVal('m-bust',     b.bust      ? b.bust + ' in' : '');
+  setVal('m-waist',    b.waist     ? b.waist + ' in' : '');
+  setVal('m-hip',      b.hip       ? b.hip + ' in' : '');
+  setVal('m-length',   b.briefLength ? b.briefLength + ' in' : '');
+  setVal('m-sleeve',   b.sleeve    ? b.sleeve + ' in' : '');
+  setVal('m-shoulder', b.shoulder  ? b.shoulder + ' in' : '');
+
+  // Populate PDF preview fields
+  set('pdfTitle', b.title || b.garmentType || '');
+  set('pdfType',  b.garmentType || b.title || '');
+  set('pdfColor', b.primaryColor || '');
+  set('pdfFabric', (b.fabric || []).join(', ') || '');
+  set('pm-bust',  b.bust      ? b.bust + '"' : '');
+  set('pm-waist', b.waist     ? b.waist + '"' : '');
+  set('pm-hip',   b.hip       ? b.hip + '"' : '');
+  const meta = document.getElementById('pdfMeta');
+  if (meta) meta.innerHTML = `Brief #${b.briefNumber}<br>${new Date(b.createdAt).toLocaleDateString('en-IN')}`;
+
+  go('s-editor');
+}
+
 function renderBriefsList(briefs) {
   const el = document.getElementById('briefsList');
   if (!el) return;
   if (!briefs.length) { el.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:var(--muted)">No briefs yet — create one above</div>'; return; }
   el.innerHTML = briefs.map(b => `
-    <div class="brief-card" onclick="go('s-preview-brief')">
+    <div class="brief-card" onclick="openBrief('${b.id}')">
       <div class="brief-card-left">${BRIEF_EMOJIS[b.title] || '👗'}</div>
       <div class="brief-card-body">
         <div class="bc-name">${b.title}</div>
@@ -1562,7 +1625,7 @@ function renderRecentBriefs(briefs) {
   if (!el) return;
   if (!briefs.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No briefs yet</div>'; return; }
   el.innerHTML = briefs.slice(0, 3).map(b => `
-    <div class="brief-mini" onclick="go('s-preview-brief')">
+    <div class="brief-mini" onclick="openBrief('${b.id}')">
       <div class="brief-mini-top">${BRIEF_EMOJIS[b.title] || '👗'}</div>
       <div class="brief-mini-info">
         <div class="brief-mini-name">${b.title}</div>
@@ -1585,6 +1648,21 @@ function switchSkTab(el, id) {
 
 function selStyle(el) { document.querySelectorAll('.sk-style').forEach(s => s.classList.remove('on')); el.classList.add('on'); }
 
+async function loadImgWithRetry(img, url, onSuccess, onFail, retries = 4, delay = 8000) {
+  const token = localStorage.getItem('mt');
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const resp = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      if (!resp.ok) { if (i < retries) { await new Promise(r => setTimeout(r, delay)); continue; } return onFail(); }
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      img.onload = () => { onSuccess(); };
+      img.src = objectUrl;
+      return;
+    } catch { if (i < retries) { await new Promise(r => setTimeout(r, delay)); } else onFail(); }
+  }
+}
+
 async function generateSketch() {
   const btn = document.getElementById('skBtn');
   const gen = document.getElementById('skGen');
@@ -1593,9 +1671,9 @@ async function generateSketch() {
   const act = document.getElementById('skActions');
   btn.disabled = true; ph.style.display = 'none'; res.classList.remove('show'); gen.classList.add('show');
 
-  const steps = [['Reading brief...','Garment & silhouette'],['Building prompt...','Colour & fabric'],['Sending to AI...','Pollinations.ai'],['Rendering sketch...','Fashion illustration']];
+  const steps = [['Reading brief...','Garment & silhouette'],['Building prompt...','Colour & fabric'],['Sending to AI...','Pollinations.ai'],['Rendering sketch...','Fashion illustration'],['Still rendering...','This can take ~30s']];
   let si = 0;
-  const iv = setInterval(() => { if (si < steps.length) { document.getElementById('genName').textContent = steps[si][0]; document.getElementById('genStep').textContent = steps[si][1]; si++; } }, 800);
+  const iv = setInterval(() => { if (si < steps.length) { document.getElementById('genName').textContent = steps[si][0]; document.getElementById('genStep').textContent = steps[si][1]; si++; } }, 2000);
 
   const prompt = document.getElementById('skPrompt').value;
   const styleEl = document.querySelector('.sk-style.on');
@@ -1603,12 +1681,11 @@ async function generateSketch() {
 
   try {
     const { imageUrl } = await api('/api/sketch/generate', { method: 'POST', body: JSON.stringify({ prompt, style }) });
-    clearInterval(iv);
     const img = document.getElementById('skImg');
-    img.onload = () => { gen.classList.remove('show'); res.classList.add('show'); act.style.display = 'flex'; btn.disabled = false; showToast('Sketch generated ✓'); };
-    img.onerror = () => { gen.classList.remove('show'); res.classList.add('show'); act.style.display = 'flex'; btn.disabled = false; };
-    img.src = imageUrl;
-    setTimeout(() => { if (gen.classList.contains('show')) { clearInterval(iv); gen.classList.remove('show'); res.classList.add('show'); act.style.display = 'flex'; btn.disabled = false; } }, 20000);
+    loadImgWithRetry(img, imageUrl,
+      () => { clearInterval(iv); gen.classList.remove('show'); res.classList.add('show'); act.style.display = 'flex'; btn.disabled = false; showToast('Sketch generated ✓'); },
+      () => { clearInterval(iv); gen.classList.remove('show'); ph.style.display = 'flex'; ph.querySelector('p').textContent = 'Image service is busy — try again in a moment.'; btn.disabled = false; }
+    );
   } catch (e) {
     clearInterval(iv); gen.classList.remove('show'); ph.style.display = 'flex'; ph.querySelector('p').textContent = 'Error: ' + e.message; btn.disabled = false;
   }
@@ -1624,10 +1701,10 @@ async function generateFlat() {
     const prompt = document.getElementById('skPrompt').value + ' front view technical flat, no mannequin';
     const { imageUrl } = await api('/api/sketch/generate', { method: 'POST', body: JSON.stringify({ prompt, style: 'flat-view' }) });
     const img = document.getElementById('flatImg');
-    img.onload = () => { res.classList.add('show'); btn.innerHTML = '<i class="ti ti-refresh" style="font-size:14px"></i> Regenerate'; btn.disabled = false; };
-    img.onerror = () => { ph.style.display = 'flex'; btn.innerHTML = '<i class="ti ti-wand" style="font-size:14px"></i> Try Again'; btn.disabled = false; };
-    img.src = imageUrl;
-    setTimeout(() => { if (!res.classList.contains('show')) { ph.style.display = 'flex'; btn.innerHTML = '<i class="ti ti-wand"></i> Generate Flat View'; btn.disabled = false; } }, 20000);
+    loadImgWithRetry(img, imageUrl,
+      () => { res.classList.add('show'); btn.innerHTML = '<i class="ti ti-refresh" style="font-size:14px"></i> Regenerate'; btn.disabled = false; },
+      () => { ph.style.display = 'flex'; btn.innerHTML = '<i class="ti ti-wand" style="font-size:14px"></i> Try Again'; btn.disabled = false; }
+    );
   } catch (e) { ph.style.display = 'flex'; btn.innerHTML = '<i class="ti ti-wand"></i> Generate Flat View'; btn.disabled = false; }
 }
 
@@ -1640,10 +1717,10 @@ async function genDetail(type, elId) {
     const { imageUrl } = await api('/api/sketch/generate', { method: 'POST', body: JSON.stringify({ prompt, style: 'detail', w: 300, h: 300 }) });
     const img = new Image();
     img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:10px;';
-    img.onload = () => { el.innerHTML = ''; el.appendChild(img); showToast(type + ' detail ready ✓'); };
-    img.onerror = () => { el.innerHTML = `<div class="detail-inner"><div class="em">🎨</div><div class="lbl">${type}</div></div>`; };
-    img.src = imageUrl;
-    setTimeout(() => { if (el.querySelector('[style*="spin"]')) el.innerHTML = `<div class="detail-inner"><div class="em">🎨</div><div class="lbl">${type}</div></div>`; }, 18000);
+    loadImgWithRetry(img, imageUrl,
+      () => { el.innerHTML = ''; el.appendChild(img); showToast(type + ' detail ready ✓'); },
+      () => { el.innerHTML = `<div class="detail-inner"><div class="em">🎨</div><div class="lbl">${type}</div></div>`; }
+    );
   } catch { el.innerHTML = `<div class="detail-inner"><div class="em">🎨</div><div class="lbl">${type}</div></div>`; }
 }
 
