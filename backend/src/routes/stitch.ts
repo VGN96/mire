@@ -1,7 +1,7 @@
-import { Router }  from 'express';
-import multer       from 'multer';
-import Anthropic    from '@anthropic-ai/sdk';
-import { prisma }   from '../config/db.js';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import multer from 'multer';
+import Anthropic from '@anthropic-ai/sdk';
+import { prisma } from '../config/db.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } });
@@ -11,13 +11,18 @@ async function nextBriefNum() {
   return `SS-${new Date().getFullYear()}-${String(n + 1).padStart(3, '0')}`;
 }
 
+function extractText(resp: Anthropic.Message): string {
+  const block = resp.content[0] as { text?: string } | undefined;
+  return block?.text ?? '';
+}
+
 // POST /api/stitch/analyse — AI image/text analysis
-router.post('/analyse', upload.single('image'), async (req, res, next) => {
+router.post('/analyse', upload.single('image'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'sk-ant-...')
       return res.json({ analysis: { garmentType: req.body.description || 'Custom Garment', difficulty: 'moderate' }, imageUrl: null });
 
-    let imageUrl = null;
+    let imageUrl: string | null = null;
     if (req.file) {
       try {
         const { cloudinaryUpload } = await import('../services/cloudinaryService.js');
@@ -27,9 +32,10 @@ router.post('/analyse', upload.single('image'), async (req, res, next) => {
     }
 
     const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const content = imageUrl
+    // The `url` image source is accepted by the Anthropic API; cast to satisfy the SDK's narrower type.
+    const content = (imageUrl
       ? [{ type: 'image', source: { type: 'url', url: imageUrl } }, { type: 'text', text: 'Analyse this garment and return JSON brief.' }]
-      : `Analyse: ${req.body.description || 'Anarkali suit'}. Return JSON stitch brief.`;
+      : `Analyse: ${req.body.description || 'Anarkali suit'}. Return JSON stitch brief.`) as Anthropic.MessageParam['content'];
 
     const resp = await ai.messages.create({
       model: 'claude-sonnet-4-6', max_tokens: 800,
@@ -38,15 +44,15 @@ router.post('/analyse', upload.single('image'), async (req, res, next) => {
       messages: [{ role: 'user', content }],
     });
 
-    let analysis = {};
-    try { analysis = JSON.parse(resp.content[0].text.replace(/```json|```/g, '')); }
+    let analysis: Record<string, unknown> = {};
+    try { analysis = JSON.parse(extractText(resp).replace(/```json|```/g, '')); }
     catch { analysis = { garmentType: req.body.description || 'Garment', difficulty: 'moderate' }; }
     res.json({ analysis, imageUrl });
   } catch (e) { next(e); }
 });
 
 // CRUD for briefs
-router.post('/briefs', async (req, res, next) => {
+router.post('/briefs', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const u = req.user;
     const brief = await prisma.stitchBrief.create({ data: {
@@ -59,33 +65,33 @@ router.post('/briefs', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.get('/briefs', async (req, res, next) => {
+router.get('/briefs', async (req: Request, res: Response, next: NextFunction) => {
   try { res.json({ briefs: await prisma.stitchBrief.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } }) }); }
   catch (e) { next(e); }
 });
 
-router.get('/briefs/:id', async (req, res, next) => {
+router.get('/briefs/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const b = await prisma.stitchBrief.findFirst({ where: { id: req.params.id, userId: req.user.id } });
     b ? res.json({ brief: b }) : res.status(404).json({ error: 'Not found' });
   } catch (e) { next(e); }
 });
 
-router.put('/briefs/:id', async (req, res, next) => {
+router.put('/briefs/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const b = await prisma.stitchBrief.update({ where: { id: req.params.id }, data: { ...req.body, updatedAt: new Date() } });
     res.json({ brief: b });
   } catch (e) { next(e); }
 });
 
-router.patch('/briefs/:id/ready', async (req, res, next) => {
+router.patch('/briefs/:id/ready', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const b = await prisma.stitchBrief.update({ where: { id: req.params.id }, data: { status: 'ready' } });
     res.json({ brief: b });
   } catch (e) { next(e); }
 });
 
-router.delete('/briefs/:id', async (req, res, next) => {
+router.delete('/briefs/:id', async (req: Request, res: Response, next: NextFunction) => {
   try { await prisma.stitchBrief.delete({ where: { id: req.params.id } }); res.json({ message: 'Deleted' }); }
   catch (e) { next(e); }
 });

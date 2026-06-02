@@ -1,8 +1,9 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { prisma } from '../config/db.js';
+
 const router = Router();
 
-router.get('/me', async (req, res, next) => {
+router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
@@ -17,7 +18,7 @@ router.get('/me', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.patch('/me', async (req, res, next) => {
+router.patch('/me', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const allowed = ['name','city','stylePersona','occasions','budgetRange',
                      'skinTone','bust','waist','hip','height','shoulder','sleeveLength','ootdReminder'];
@@ -30,7 +31,7 @@ router.patch('/me', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.get('/dashboard', async (req, res, next) => {
+router.get('/dashboard', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const [wAgg, briefs, outfits, unread] = await Promise.all([
       prisma.wardrobeItem.aggregate({

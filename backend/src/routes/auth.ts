@@ -1,16 +1,17 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../config/db.js';
 
 const router = Router();
 
-function makeAccess(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+function makeAccess(userId: string) {
+  const expiresIn = (process.env.JWT_EXPIRES_IN || '7d') as SignOptions['expiresIn'];
+  return jwt.sign({ userId }, process.env.JWT_SECRET as string, { expiresIn });
 }
-function saveRefresh(token, userId) {
+function saveRefresh(token: string, userId: string) {
   return prisma.refreshToken.create({
     data: { token, userId, expiresAt: new Date(Date.now() + 30*24*60*60*1000) },
   });
@@ -21,7 +22,7 @@ router.post('/signup', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('name').trim().notEmpty(),
-], async (req, res, next) => {
+], async (req: Request, res: Response, next: NextFunction) => {
   try {
     const errs = validationResult(req);
     if (!errs.isEmpty()) return res.status(400).json({ errors: errs.array() });
@@ -47,7 +48,7 @@ router.post('/signup', [
 router.post('/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').notEmpty(),
-], async (req, res, next) => {
+], async (req: Request, res: Response, next: NextFunction) => {
   try {
     const errs = validationResult(req);
     if (!errs.isEmpty()) return res.status(400).json({ errors: errs.array() });
@@ -66,7 +67,7 @@ router.post('/login', [
 });
 
 // POST /api/auth/refresh
-router.post('/refresh', async (req, res, next) => {
+router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) return res.status(400).json({ error: 'refreshToken required' });
@@ -85,7 +86,7 @@ router.post('/refresh', async (req, res, next) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', async (req, res, next) => {
+router.post('/logout', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { refreshToken } = req.body;
     if (refreshToken) await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
