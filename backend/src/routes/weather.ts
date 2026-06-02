@@ -1,8 +1,8 @@
-// weather.js
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+
 const router = Router();
 
-router.get('/', async (req, res, next) => {
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const city = req.query.city || 'Rajkot';
     if (!process.env.WEATHER_API_KEY || process.env.WEATHER_API_KEY === 'optional') {

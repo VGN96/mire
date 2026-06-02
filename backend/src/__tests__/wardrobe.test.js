@@ -170,6 +170,7 @@ describe('PATCH /api/wardrobe/:id/worn', () => {
 
   it('increments worn count and returns updated item', async () => {
     const updated = { id: 'item-1', name: 'Kurta', wornCount: 6, lastWornAt: new Date().toISOString() };
+    prisma.wardrobeItem.findFirst.mockResolvedValue({ id: 'item-1', userId: 'user-1' });
     prisma.wardrobeItem.update.mockResolvedValue(updated);
 
     const res = await request(app).patch('/api/wardrobe/item-1/worn')
@@ -183,6 +184,7 @@ describe('DELETE /api/wardrobe/:id', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('soft-deletes item (sets isActive=false)', async () => {
+    prisma.wardrobeItem.findFirst.mockResolvedValue({ id: 'item-1', userId: 'user-1' });
     prisma.wardrobeItem.update.mockResolvedValue({ id: 'item-1', isActive: false });
 
     const res = await request(app).delete('/api/wardrobe/item-1')

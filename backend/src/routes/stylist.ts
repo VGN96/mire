@@ -1,10 +1,12 @@
-import { Router }   from 'express';
-import Anthropic     from '@anthropic-ai/sdk';
-import { prisma }    from '../config/db.js';
+import { Router, type Request, type Response, type NextFunction } from 'express';
+import Anthropic from '@anthropic-ai/sdk';
+import { prisma } from '../config/db.js';
 
 const router = Router();
 
-async function getWeather(city) {
+interface Weather { temp: number; desc: string; city: string }
+
+async function getWeather(city?: string | null): Promise<Weather | null> {
   try {
     if (!city || !process.env.WEATHER_API_KEY || process.env.WEATHER_API_KEY === 'optional') return null;
     const { default: axios } = await import('axios');
@@ -16,8 +18,10 @@ async function getWeather(city) {
   } catch { return null; }
 }
 
-function buildSystem(user, wardrobe, weather) {
-  const items = wardrobe.map(i => `- ${i.name} (${i.category}${i.color ? ', ' + i.color : ''}, worn ${i.wornCount}×)`).join('\n');
+type WardrobeSummary = { name: string; category: string; color: string | null; wornCount: number };
+
+function buildSystem(user: Express.Request['user'], wardrobe: WardrobeSummary[], weather: Weather | null) {
+  const items = wardrobe.map((i) => `- ${i.name} (${i.category}${i.color ? ', ' + i.color : ''}, worn ${i.wornCount}×)`).join('\n');
   const w = weather ? `${weather.temp}°C, ${weather.desc} in ${weather.city}` : `~34°C in ${user.city || 'India'}`;
   return `You are Miré, a warm and elegant AI personal stylist. Expert in Indian ethnic and western wear, colour theory, fabrics, and personal styling.
 
@@ -36,8 +40,13 @@ RESPONSE RULES:
 {"outfit":true,"title":"Look name","pieces":[{"em":"👗","lbl":"item name"},{"em":"👡","lbl":"shoes"}]}`;
 }
 
+function extractText(resp: Anthropic.Message): string {
+  const block = resp.content[0] as { text?: string } | undefined;
+  return block?.text ?? '';
+}
+
 // POST /api/stylist/chat
-router.post('/chat', async (req, res, next) => {
+router.post('/chat', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { message, sessionId, history = [] } = req.body;
     if (!message?.trim()) return res.status(400).json({ error: 'message required' });
@@ -56,8 +65,8 @@ router.post('/chat', async (req, res, next) => {
 
     const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const msgs = [
-      ...history.slice(-10).map(h => ({ role: h.role, content: h.content })),
-      { role: 'user', content: message },
+      ...history.slice(-10).map((h: { role: 'user' | 'assistant'; content: string }) => ({ role: h.role, content: h.content })),
+      { role: 'user' as const, content: message },
     ];
 
     const resp = await ai.messages.create({
@@ -66,7 +75,7 @@ router.post('/chat', async (req, res, next) => {
       messages: msgs,
     });
 
-    const aiText = resp.content[0].text;
+    const aiText = extractText(resp);
     const jMatch = aiText.match(/\{"outfit":true[\s\S]*?\}/);
     let outfitData = null, cleanText = aiText;
     if (jMatch) { try { outfitData = JSON.parse(jMatch[0]); } catch {} cleanText = aiText.replace(jMatch[0], '').trim(); }
@@ -82,7 +91,7 @@ router.post('/chat', async (req, res, next) => {
 });
 
 // POST /api/stylist/ootd
-router.post('/ootd', async (req, res, next) => {
+router.post('/ootd', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'sk-ant-...')
       return res.json({ message: 'Add ANTHROPIC_API_KEY to .env for AI outfit suggestions!', outfit: null });
@@ -102,7 +111,7 @@ router.post('/ootd', async (req, res, next) => {
       messages: [{ role: 'user', content: "Give me today's outfit of the day. Short message then outfit JSON." }],
     });
 
-    const aiText = resp.content[0].text;
+    const aiText = extractText(resp);
     const jMatch = aiText.match(/\{"outfit":true[\s\S]*?\}/);
     let outfitData = null, cleanText = aiText;
     if (jMatch) { try { outfitData = JSON.parse(jMatch[0]); } catch {} cleanText = aiText.replace(jMatch[0], '').trim(); }
@@ -112,7 +121,7 @@ router.post('/ootd', async (req, res, next) => {
 });
 
 // GET /api/stylist/sessions
-router.get('/sessions', async (req, res, next) => {
+router.get('/sessions', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const sessions = await prisma.chatSession.findMany({
       where: { userId: req.user.id }, orderBy: { updatedAt: 'desc' }, take: 20,
