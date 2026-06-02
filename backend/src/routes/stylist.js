@@ -61,7 +61,7 @@ router.post('/chat', async (req, res, next) => {
     ];
 
     const resp = await ai.messages.create({
-      model: 'claude-sonnet-4-20250514', max_tokens: 600,
+      model: 'claude-sonnet-4-6', max_tokens: 600,
       system: buildSystem(req.user, wardrobe, weather),
       messages: msgs,
     });
@@ -97,7 +97,7 @@ router.post('/ootd', async (req, res, next) => {
 
     const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const resp = await ai.messages.create({
-      model: 'claude-sonnet-4-20250514', max_tokens: 300,
+      model: 'claude-sonnet-4-6', max_tokens: 300,
       system: buildSystem(req.user, wardrobe, weather),
       messages: [{ role: 'user', content: "Give me today's outfit of the day. Short message then outfit JSON." }],
     });

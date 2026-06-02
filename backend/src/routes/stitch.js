@@ -32,7 +32,7 @@ router.post('/analyse', upload.single('image'), async (req, res, next) => {
       : `Analyse: ${req.body.description || 'Anarkali suit'}. Return JSON stitch brief.`;
 
     const resp = await ai.messages.create({
-      model: 'claude-sonnet-4-20250514', max_tokens: 800,
+      model: 'claude-sonnet-4-6', max_tokens: 800,
       system: `You are a fashion AI. Analyse garments and return ONLY valid JSON (no markdown fences):
 {"garmentType":"","styleNotes":[],"neckline":"","sleeveStyle":"","length":"","silhouette":"","primaryColor":"","fabric":[],"outerFabricMetres":0,"liningMetres":0,"embellishments":[],"closure":"","difficulty":"simple|moderate|skilled","constructionNotes":"","aiStyleNote":""}`,
       messages: [{ role: 'user', content }],
