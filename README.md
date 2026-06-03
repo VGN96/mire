@@ -18,8 +18,9 @@ A full-stack AI fashion application that helps users organize their wardrobe, ge
 ## Tech Stack
 
 ### Backend
-- **Runtime:** Node.js (ESM)
+- **Runtime:** Node.js (ESM) with TypeScript
 - **Framework:** Express.js
+- **Validation:** Zod
 - **Database:** PostgreSQL (via Supabase)
 - **ORM:** Prisma
 - **Authentication:** JWT
@@ -89,6 +90,11 @@ npm run dev
 
 The application will be available at **http://localhost:4000**
 
+### 7. Optional type checking
+```bash
+npm run typecheck
+```
+
 ## Graceful Degradation
 
 The app works seamlessly even without optional services:
@@ -103,7 +109,7 @@ The app works seamlessly even without optional services:
 mire/
 ├── backend/                    ← Express API server
 │   ├── src/
-│   │   ├── index.js           ← Main server entry point
+│   │   ├── index.ts           ← Main server entry point
 │   │   ├── config/db.js       ← Prisma client configuration
 │   │   ├── middleware/
 │   │   │   ├── auth.js        ← JWT authentication
@@ -111,7 +117,7 @@ mire/
 │   │   ├── routes/            ← API endpoints
 │   │   │   ├── auth.js
 │   │   │   ├── user.js
-│   │   │   ├── wardrobe.js
+│   │   │   ├── wardrobe.ts
 │   │   │   ├── stylist.js
 │   │   │   ├── stitch.js
 │   │   │   ├── sketch.js
@@ -213,7 +219,7 @@ npx prisma generate
 2. Connect repository to Render.com
 3. Configure deployment settings:
    - **Build Command:** `npm install && npx prisma generate`
-   - **Start Command:** `node src/index.js`
+   - **Start Command:** `node --loader ts-node/esm src/index.ts`
 4. Add environment variables in Render dashboard
 5. Update `API` constant in `frontend/index.html` to your Render URL
 6. Deploy!
@@ -232,7 +238,7 @@ Since this is an Express-based full-stack app, you'll need a platform that suppo
 
 ### Adding New Endpoints
 1. Create a new route file in `src/routes/`
-2. Import and use in `src/index.js`
+2. Import and use in `src/index.ts`
 3. Add tests in `src/__tests__/`
 4. Update database schema in `prisma/schema.prisma` if needed
 
